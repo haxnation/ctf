@@ -368,13 +368,20 @@
                 document.getElementById('det-desc').innerHTML = chal.description;
 
                 // Render Assets
+                // Render Assets
                 const assetsDiv = document.getElementById('det-assets');
                 if (chal.assets && chal.assets.length > 0) {
                     assetsDiv.innerHTML = `<h3>Assets</h3>` + chal.assets.map(asset => {
-                        // Clean up the relative path so it points to the github raw link or relative repo link if needed.
-                        // For a static site, you usually want to link to the raw github file.
-                        // Assuming assets are relative to the challenge folder:
-                        return `<a href="https://github.com/A-Y-U-S-H-Y-A/project-haxnation/tree/main/${chal.category[0]}/${chal.name}/${asset.replace('./', '')}" target="_blank" class="asset-link">💾 ${asset.replace('./', '')}</a>`;
+                        const cleanAsset = asset.replace('./', '');
+                        
+                        // Use the exact path we injected via Python. 
+                        // Fallback to the old method just in case the API hasn't rebuilt yet.
+                        const folderPath = chal.repo_path || `${chal.category[0]}/${chal.name}`;
+                        
+                        // Use raw.githubusercontent.com so the file actually downloads!
+                        const downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${folderPath}/${cleanAsset}`;
+                        
+                        return `<a href="${downloadUrl}" target="_blank" class="asset-link">⬇️ Download ${cleanAsset}</a>`;
                     }).join('');
                 } else {
                     assetsDiv.innerHTML = '';
