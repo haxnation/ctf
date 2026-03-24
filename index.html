@@ -368,7 +368,6 @@
                 document.getElementById('det-desc').innerHTML = chal.description;
 
                 // Render Assets
-                // Render Assets
                 const assetsDiv = document.getElementById('det-assets');
                 if (chal.assets && chal.assets.length > 0) {
                     assetsDiv.innerHTML = `<h3>Assets</h3>` + chal.assets.map(asset => {
@@ -378,8 +377,10 @@
                         // Fallback to the old method just in case the API hasn't rebuilt yet.
                         const folderPath = chal.repo_path || `${chal.category[0]}/${chal.name}`;
                         
-                        // Use raw.githubusercontent.com so the file actually downloads!
-                        const downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${folderPath}/${cleanAsset}`;
+                        // Safely encode the URL to handle spaces in folder names (e.g. "Web Security")
+                        const safeFolderPath = encodeURI(folderPath);
+                        const safeAssetFile = encodeURIComponent(cleanAsset);
+                        const downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${safeFolderPath}/${safeAssetFile}`;
                         
                         return `<a href="${downloadUrl}" target="_blank" class="asset-link">⬇️ Download ${cleanAsset}</a>`;
                     }).join('');
