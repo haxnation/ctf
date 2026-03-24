@@ -45,16 +45,22 @@
             padding: 20px;
         }
 
-        /* Search Bar */
+        /* Search & Filter Bar */
         .search-container {
             margin-bottom: 30px;
             display: flex;
             justify-content: center;
         }
 
-        #searchBar {
+        .search-inputs {
+            display: flex;
+            gap: 10px;
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
+        }
+
+        #searchBar {
+            flex-grow: 1;
             padding: 15px 20px;
             font-size: 1.1rem;
             border-radius: 8px;
@@ -65,8 +71,25 @@
             transition: border-color 0.2s;
         }
 
-        #searchBar:focus {
+        .filter-select {
+            padding: 15px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+        }
+
+        #searchBar:focus, .filter-select:focus {
             border-color: var(--accent);
+        }
+
+        @media (max-width: 600px) {
+            .search-inputs {
+                flex-direction: column;
+            }
         }
 
         /* Grid View */
@@ -231,7 +254,20 @@
 
         <div id="list-view" style="display: none;">
             <div class="search-container">
-                <input type="text" id="searchBar" placeholder="Search for challenges, categories, or authors..." />
+                <div class="search-inputs">
+                    <input type="text" id="searchBar" placeholder="Search by name, author, or keyword..." />
+                    
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">All Categories</option>
+                        </select>
+
+                    <select id="difficultyFilter" class="filter-select">
+                        <option value="">All Difficulties</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
             </div>
             <div class="grid" id="challengeGrid"></div>
         </div>
@@ -254,7 +290,7 @@
             <div id="det-hints" style="margin-top: 20px;"></div>
 
             <div class="flag-submission">
-                <input type="text" id="flagInput" placeholder="HXN{Enter_Your_Flag_Here}">
+                <input type="text" id="flagInput" placeholder="Enter the flag here...">
                 <button id="submitFlagBtn">Submit Flag</button>
             </div>
             <div id="flagStatus"></div>
@@ -286,6 +322,8 @@
                 
                 miniSearch.addAll(allChallenges);
 
+                populateCategoryDropdown();
+
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('list-view').style.display = 'block';
                 
@@ -297,23 +335,73 @@
             }
         }
 
-        // Handle Search Typing
-        document.getElementById('searchBar').addEventListener('input', (e) => {
-            const query = e.target.value;
+        // Dynamically build category dropdown based on available data
+        function populateCategoryDropdown() {
+            const categories = new Set();
+            allChallenges.forEach(chal => {
+                if (Array.isArray(chal.category)) {
+                    chal.category.forEach(c => categories.add(c));
+                } else if (chal.category) {
+                    categories.add(chal.category);
+                }
+            });
+
+            const catSelect = document.getElementById('categoryFilter');
+            // Sort alphabetically and create options
+            Array.from(categories).sort().forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                catSelect.appendChild(opt);
+            });
+        }
+
+        // Handle Search and Filtering collectively
+        function handleFilters() {
+            const query = document.getElementById('searchBar').value.toLowerCase().trim();
+            const catFilter = document.getElementById('categoryFilter').value;
+            const diffFilter = document.getElementById('difficultyFilter').value;
+
+            let filteredResults = allChallenges;
+
+            // 1. Text Search filtering (if user typed something)
             if (query.length > 1) {
-                const results = miniSearch.search(query);
-                renderGrid(results);
-            } else {
-                renderGrid(allChallenges);
+                const searchResults = miniSearch.search(query);
+                // Map the MiniSearch result IDs back to the full challenge objects
+                filteredResults = searchResults.map(res => allChallenges.find(c => c.id === res.id));
             }
-        });
+
+            // 2. Dropdown filtering
+            filteredResults = filteredResults.filter(chal => {
+                let matchCat = true;
+                let matchDiff = true;
+
+                if (catFilter) {
+                    const chalCats = Array.isArray(chal.category) ? chal.category : [chal.category];
+                    matchCat = chalCats.includes(catFilter);
+                }
+
+                if (diffFilter) {
+                    matchDiff = (chal.difficulty === diffFilter);
+                }
+
+                return matchCat && matchDiff;
+            });
+
+            renderGrid(filteredResults);
+        }
+
+        // Attach listeners to search inputs
+        document.getElementById('searchBar').addEventListener('input', handleFilters);
+        document.getElementById('categoryFilter').addEventListener('change', handleFilters);
+        document.getElementById('difficultyFilter').addEventListener('change', handleFilters);
 
         // Render Cards
         function renderGrid(data) {
             const grid = document.getElementById('challengeGrid');
             
             if (data.length === 0) {
-                grid.innerHTML = `<p style="color:var(--text-muted); grid-column: 1/-1; text-align: center;">No challenges found.</p>`;
+                grid.innerHTML = `<p style="color:var(--text-muted); grid-column: 1/-1; text-align: center;">No challenges found matching your filters.</p>`;
                 return;
             }
 
@@ -338,6 +426,29 @@
                 </div>
                 `;
             }).join('');
+        }
+
+        // Force cross-origin files to download instead of opening in a new tab
+        async function forceDownload(url, filename) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Network response was not ok");
+                const blob = await response.blob();
+                
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = filename; 
+                
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+            } catch (error) {
+                console.error('Download failed:', error);
+                window.open(url, '_blank');
+            }
         }
 
         // View Full Challenge
@@ -367,22 +478,19 @@
                 document.getElementById('det-author').innerHTML = `<b>Author(s):</b> ${authors}`;
                 document.getElementById('det-desc').innerHTML = chal.description;
 
-                // Render Assets
+                // Render Assets (With force-download and URI encoding)
                 const assetsDiv = document.getElementById('det-assets');
                 if (chal.assets && chal.assets.length > 0) {
                     assetsDiv.innerHTML = `<h3>Assets</h3>` + chal.assets.map(asset => {
                         const cleanAsset = asset.replace('./', '');
                         
-                        // Use the exact path we injected via Python. 
-                        // Fallback to the old method just in case the API hasn't rebuilt yet.
                         const folderPath = chal.repo_path || `${chal.category[0]}/${chal.name}`;
                         
-                        // Safely encode the URL to handle spaces in folder names (e.g. "Web Security")
                         const safeFolderPath = encodeURI(folderPath);
                         const safeAssetFile = encodeURIComponent(cleanAsset);
                         const downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${safeFolderPath}/${safeAssetFile}`;
                         
-                        return `<a href="${downloadUrl}" target="_blank" class="asset-link">⬇️ Download ${cleanAsset}</a>`;
+                        return `<a href="javascript:void(0)" onclick="forceDownload('${downloadUrl}', '${cleanAsset}')" class="asset-link">⬇️ Download ${cleanAsset}</a>`;
                     }).join('');
                 } else {
                     assetsDiv.innerHTML = '';
@@ -424,9 +532,6 @@
             const userInput = document.getElementById('flagInput').value.trim();
             const statusEl = document.getElementById('flagStatus');
 
-            // NOTE: In a production competitive CTF, checking flags on the frontend is insecure.
-            // Users can look at the network payload to see the answers. 
-            // This is acceptable for a static practice archive.
             if (currentChallengeData.flags && currentChallengeData.flags.includes(userInput)) {
                 statusEl.style.color = "var(--success)";
                 statusEl.innerText = "🎉 Correct! You've captured the flag.";
