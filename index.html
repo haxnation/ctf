@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Haxnation CTF</title>
+    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #1f6feb;
+            --success: #238636;
+            --danger: #da3633;
+            --border: #30363d;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            margin: 0;
+            color: var(--accent);
+            font-size: 2rem;
+            letter-spacing: 2px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #searchBar {
+            width: 100%;
+            max-width: 600px;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #searchBar:focus {
+            border-color: var(--accent);
+        }
+
+        /* Grid View */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }
+
+        .card h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent);
+        }
+
+        .tags {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background-color: #21262d;
+            border: 1px solid var(--border);
+        }
+
+        /* Detail View */
+        #detail-view {
+            display: none;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 30px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        .back-btn:hover {
+            text-decoration: underline;
+        }
+
+        .detail-meta {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hint-btn {
+            background-color: #21262d;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .hint-content {
+            display: none;
+            background-color: #1a1e24;
+            padding: 15px;
+            border-left: 3px solid var(--accent);
+            margin-top: 10px;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .asset-link {
+            display: inline-block;
+            background-color: #21262d;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin: 5px 10px 5px 0;
+        }
+
+        .asset-link:hover {
+            background-color: var(--border);
+        }
+
+        /* Flag Submission */
+        .flag-submission {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        #flagInput {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        #submitFlagBtn {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #submitFlagBtn:hover {
+            background-color: #2ea043;
+        }
+
+        #flagStatus {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* Loading Spinner */
+        #loading {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🚩 HAXNATION CTF</h1>
+    </header>
+
+    <div class="container">
+        <div id="loading">Booting up the mainframe...</div>
+
+        <div id="list-view" style="display: none;">
+            <div class="search-container">
+                <input type="text" id="searchBar" placeholder="Search for challenges, categories, or authors..." />
+            </div>
+            <div class="grid" id="challengeGrid"></div>
+        </div>
+
+        <div id="detail-view">
+            <button class="back-btn" onclick="showListView()">← Back to Challenges</button>
+            
+            <h1 id="det-title">Challenge Title</h1>
+            
+            <div class="detail-meta">
+                <span id="det-cat"></span> | 
+                <span id="det-diff"></span> | 
+                <span id="det-author"></span>
+            </div>
+
+            <div id="det-desc" style="line-height: 1.6;"></div>
+
+            <div id="det-assets" style="margin-top: 20px;"></div>
+            
+            <div id="det-hints" style="margin-top: 20px;"></div>
+
+            <div class="flag-submission">
+                <input type="text" id="flagInput" placeholder="HXN{Enter_Your_Flag_Here}">
+                <button id="submitFlagBtn">Submit Flag</button>
+            </div>
+            <div id="flagStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        let miniSearch;
+        let allChallenges = [];
+        let currentChallengeData = null;
+
+        // Base URL config - Adjust if deploying to a subdirectory like /project-haxnation/
+        const API_BASE = 'https://a-y-u-s-h-y-a.github.io/project-haxnation/api'; 
+
+        async function initApp() {
+            try {
+                // Fetch the Lite Index
+                const response = await fetch(`${API_BASE}/challenges-lite.json`);
+                if (!response.ok) throw new Error("Could not load challenges.");
+                
+                allChallenges = await response.json();
+
+                // Initialize Search Engine
+                miniSearch = new MiniSearch({
+                    fields: ['name', 'category', 'difficulty', 'authors'],
+                    storeFields: ['id', 'name', 'category', 'difficulty', 'authors'],
+                    searchOptions: { fuzzy: 0.2, prefix: true }
+                });
+                
+                miniSearch.addAll(allChallenges);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('list-view').style.display = 'block';
+                
+                renderGrid(allChallenges);
+
+            } catch (error) {
+                document.getElementById('loading').innerText = "Error loading database. Make sure the API is built!";
+                console.error(error);
+            }
+        }
+
+        // Handle Search Typing
+        document.getElementById('searchBar').addEventListener('input', (e) => {
+            const query = e.target.value;
+            if (query.length > 1) {
+                const results = miniSearch.search(query);
+                renderGrid(results);
+            } else {
+                renderGrid(allChallenges);
+            }
+        });
+
+        // Render Cards
+        function renderGrid(data) {
+            const grid = document.getElementById('challengeGrid');
+            
+            if (data.length === 0) {
+                grid.innerHTML = `<p style="color:var(--text-muted); grid-column: 1/-1; text-align: center;">No challenges found.</p>`;
+                return;
+            }
+
+            grid.innerHTML = data.map(chal => {
+                const authors = chal.authors && chal.authors.length > 0 ? chal.authors.join(', ') : 'Unknown';
+                const categories = Array.isArray(chal.category) ? chal.category.join(', ') : chal.category;
+                
+                // Color code difficulty
+                let diffColor = '#8b949e';
+                if(chal.difficulty === 'Easy') diffColor = '#238636';
+                if(chal.difficulty === 'Medium') diffColor = '#d29922';
+                if(chal.difficulty === 'Hard') diffColor = '#da3633';
+
+                return `
+                <div class="card" onclick="openChallenge('${chal.id}')">
+                    <h3>${chal.name}</h3>
+                    <div class="tags">
+                        <span class="tag" style="border-color: ${diffColor}; color: ${diffColor}">${chal.difficulty}</span>
+                        <span class="tag">${categories}</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">By: ${authors}</p>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // View Full Challenge
+        async function openChallenge(id) {
+            // UI Toggle
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('detail-view').style.display = 'block';
+            document.getElementById('det-title').innerText = "Loading...";
+            
+            // Reset state
+            document.getElementById('flagInput').value = '';
+            document.getElementById('flagStatus').innerText = '';
+            currentChallengeData = null;
+
+            try {
+                // Fetch the heavy JSON file for this specific challenge
+                const response = await fetch(`${API_BASE}/challenges/${id}.json`);
+                const chal = await response.json();
+                currentChallengeData = chal;
+
+                const authors = chal.authors ? chal.authors.map(a => `<a href="${a.url}" target="_blank" style="color:var(--accent)">${a.name}</a>`).join(', ') : 'Unknown';
+                const categories = Array.isArray(chal.category) ? chal.category.join(', ') : chal.category;
+
+                document.getElementById('det-title').innerText = chal.name;
+                document.getElementById('det-cat').innerHTML = `<b>Category:</b> ${categories}`;
+                document.getElementById('det-diff').innerHTML = `<b>Difficulty:</b> ${chal.difficulty}`;
+                document.getElementById('det-author').innerHTML = `<b>Author(s):</b> ${authors}`;
+                document.getElementById('det-desc').innerHTML = chal.description;
+
+                // Render Assets
+                const assetsDiv = document.getElementById('det-assets');
+                if (chal.assets && chal.assets.length > 0) {
+                    assetsDiv.innerHTML = `<h3>Assets</h3>` + chal.assets.map(asset => {
+                        // Clean up the relative path so it points to the github raw link or relative repo link if needed.
+                        // For a static site, you usually want to link to the raw github file.
+                        // Assuming assets are relative to the challenge folder:
+                        return `<a href="https://github.com/A-Y-U-S-H-Y-A/project-haxnation/tree/main/${chal.category[0]}/${chal.name}/${asset.replace('./', '')}" target="_blank" class="asset-link">💾 ${asset.replace('./', '')}</a>`;
+                    }).join('');
+                } else {
+                    assetsDiv.innerHTML = '';
+                }
+
+                // Render Hints
+                const hintsDiv = document.getElementById('det-hints');
+                if (chal.hints && chal.hints.length > 0) {
+                    hintsDiv.innerHTML = `<h3>Hints</h3>` + chal.hints.map((hint, index) => `
+                        <div>
+                            <button class="hint-btn" onclick="toggleHint(${index})">Reveal Hint ${index + 1}</button>
+                            <div class="hint-content" id="hint-${index}">${hint}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    hintsDiv.innerHTML = '';
+                }
+
+            } catch (error) {
+                document.getElementById('det-title').innerText = "Error loading challenge data.";
+                console.error(error);
+            }
+        }
+
+        function toggleHint(index) {
+            const hintEl = document.getElementById(`hint-${index}`);
+            hintEl.style.display = hintEl.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showListView() {
+            document.getElementById('detail-view').style.display = 'none';
+            document.getElementById('list-view').style.display = 'block';
+        }
+
+        // Flag Checker Logic
+        document.getElementById('submitFlagBtn').addEventListener('click', () => {
+            if (!currentChallengeData) return;
+            
+            const userInput = document.getElementById('flagInput').value.trim();
+            const statusEl = document.getElementById('flagStatus');
+
+            // NOTE: In a production competitive CTF, checking flags on the frontend is insecure.
+            // Users can look at the network payload to see the answers. 
+            // This is acceptable for a static practice archive.
+            if (currentChallengeData.flags && currentChallengeData.flags.includes(userInput)) {
+                statusEl.style.color = "var(--success)";
+                statusEl.innerText = "🎉 Correct! You've captured the flag.";
+            } else {
+                statusEl.style.color = "var(--danger)";
+                statusEl.innerText = "❌ Incorrect flag. Keep trying!";
+            }
+        });
+
+        // Start the app
+        initApp();
+    </script>
+</body>
+</html>
