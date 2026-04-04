@@ -30,11 +30,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run E2E Tests (Playwright)
-        # We start a lightweight local server on port 8080 in the background (&) 
-        # so Playwright has a URL to test against.
-        run: |
-          npx http-server ./ -p 8080 -s & 
-          npm run test:e2e
+        run: npm run test:e2e
 
   deploy:
     name: Deploy to GitHub Pages

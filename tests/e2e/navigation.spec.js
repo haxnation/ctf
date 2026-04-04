@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('HaxNation CTF Platform Navigation', () => {
   
   test.beforeEach(async ({ page }) => {
-    // Playwright will use a local server during the test
-    await page.goto('http://localhost:8080'); 
+    // Playwright now knows the baseURL from the config
+    await page.goto('/'); 
   });
 
   test('should display the main navigation tabs correctly', async ({ page }) => {
