@@ -3,546 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Haxnation CTF</title>
-    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
-            --accent: #58a6ff;
-            --accent-hover: #1f6feb;
-            --success: #238636;
-            --danger: #da3633;
-            --border: #30363d;
-        }
-
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-        }
-
-        header {
-            background-color: var(--card-bg);
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border);
-        }
-
-        header h1 {
-            margin: 0;
-            color: var(--accent);
-            font-size: 2rem;
-            letter-spacing: 2px;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* Search & Filter Bar */
-        .search-container {
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .search-inputs {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            max-width: 800px;
-        }
-
-        #searchBar {
-            flex-grow: 1;
-            padding: 15px 20px;
-            font-size: 1.1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .filter-select {
-            padding: 15px 20px;
-            font-size: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            outline: none;
-            cursor: pointer;
-        }
-
-        #searchBar:focus, .filter-select:focus {
-            border-color: var(--accent);
-        }
-
-        @media (max-width: 600px) {
-            .search-inputs {
-                flex-direction: column;
-            }
-        }
-
-        /* Grid View */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 20px;
-            cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-            border-color: var(--accent);
-        }
-
-        .card h3 {
-            margin: 0 0 10px 0;
-            color: var(--accent);
-        }
-
-        .tags {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .tag {
-            font-size: 0.8rem;
-            padding: 4px 8px;
-            border-radius: 12px;
-            background-color: #21262d;
-            border: 1px solid var(--border);
-        }
-
-        /* Detail View */
-        #detail-view {
-            display: none;
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 30px;
-        }
-
-        .back-btn {
-            background: none;
-            border: none;
-            color: var(--accent);
-            cursor: pointer;
-            font-size: 1rem;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-
-        .back-btn:hover {
-            text-decoration: underline;
-        }
-
-        .detail-meta {
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .hint-btn {
-            background-color: #21262d;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .hint-content {
-            display: none;
-            background-color: #1a1e24;
-            padding: 15px;
-            border-left: 3px solid var(--accent);
-            margin-top: 10px;
-            border-radius: 0 6px 6px 0;
-        }
-
-        .asset-link {
-            display: inline-block;
-            background-color: #21262d;
-            color: var(--accent);
-            text-decoration: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            margin: 5px 10px 5px 0;
-        }
-
-        .asset-link:hover {
-            background-color: var(--border);
-        }
-
-        /* Flag Submission */
-        .flag-submission {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 10px;
-        }
-
-        #flagInput {
-            flex-grow: 1;
-            padding: 10px 15px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            background-color: var(--bg-color);
-            color: var(--text-main);
-        }
-
-        #submitFlagBtn {
-            background-color: var(--success);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        #submitFlagBtn:hover {
-            background-color: #2ea043;
-        }
-
-        #flagStatus {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        /* Loading Spinner */
-        #loading {
-            text-align: center;
-            font-size: 1.2rem;
-            color: var(--text-muted);
-            margin-top: 50px;
-        }
-    </style>
-</head>
-<body>
-
-    <header>
-        <h1>🚩 HAXNATION CTF</h1>
-    </header>
-
-    <div class="container">
-        <div id="loading">Booting up the mainframe...</div>
-
-        <div id="list-view" style="display: none;">
-            <div class="search-container">
-                <div class="search-inputs">
-                    <input type="text" id="searchBar" placeholder="Search by name, author, or keyword..." />
-                    
-                    <select id="categoryFilter" class="filter-select">
-                        <option value="">All Categories</option>
-                        </select>
-
-                    <select id="difficultyFilter" class="filter-select">
-                        <option value="">All Difficulties</option>
-                        <option value="Easy">Easy</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid" id="challengeGrid"></div>
-        </div>
-
-        <div id="detail-view">
-            <button class="back-btn" onclick="showListView()">← Back to Challenges</button>
-            
-            <h1 id="det-title">Challenge Title</h1>
-            
-            <div class="detail-meta">
-                <span id="det-cat"></span> | 
-                <span id="det-diff"></span> | 
-                <span id="det-author"></span>
-            </div>
-
-            <div id="det-desc" style="line-height: 1.6;"></div>
-
-            <div id="det-assets" style="margin-top: 20px;"></div>
-            
-            <div id="det-hints" style="margin-top: 20px;"></div>
-
-            <div class="flag-submission">
-                <input type="text" id="flagInput" placeholder="Enter the flag here...">
-                <button id="submitFlagBtn">Submit Flag</button>
-            </div>
-            <div id="flagStatus"></div>
-        </div>
-    </div>
-
+    <title>HaxNation — CTF Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        let miniSearch;
-        let allChallenges = [];
-        let currentChallengeData = null;
-
-        // Base URL config - Adjust if deploying to a subdirectory like /project-haxnation/
-        const API_BASE = 'https://a-y-u-s-h-y-a.github.io/project-haxnation/api'; 
-
-        async function initApp() {
-            try {
-                // Fetch the Lite Index
-                const response = await fetch(`${API_BASE}/challenges-lite.json`);
-                if (!response.ok) throw new Error("Could not load challenges.");
-                
-                allChallenges = await response.json();
-
-                // Initialize Search Engine
-                miniSearch = new MiniSearch({
-                    fields: ['name', 'category', 'difficulty', 'authors'],
-                    storeFields: ['id', 'name', 'category', 'difficulty', 'authors'],
-                    searchOptions: { fuzzy: 0.2, prefix: true }
-                });
-                
-                miniSearch.addAll(allChallenges);
-
-                populateCategoryDropdown();
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('list-view').style.display = 'block';
-                
-                renderGrid(allChallenges);
-
-            } catch (error) {
-                document.getElementById('loading').innerText = "Error loading database. Make sure the API is built!";
-                console.error(error);
-            }
-        }
-
-        // Dynamically build category dropdown based on available data
-        function populateCategoryDropdown() {
-            const categories = new Set();
-            allChallenges.forEach(chal => {
-                if (Array.isArray(chal.category)) {
-                    chal.category.forEach(c => categories.add(c));
-                } else if (chal.category) {
-                    categories.add(chal.category);
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        canvas: '#fafafa', ink: '#0b0b0b',
+                        cyan: '#5ce1e6', danger: '#ff2a2a'
+                    },
+                    fontFamily: {
+                        sans: ['"Inter"', 'sans-serif'],
+                        mono: ['"Fira Code"', 'monospace'],
+                    }
                 }
-            });
-
-            const catSelect = document.getElementById('categoryFilter');
-            // Sort alphabetically and create options
-            Array.from(categories).sort().forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                catSelect.appendChild(opt);
-            });
-        }
-
-        // Handle Search and Filtering collectively
-        function handleFilters() {
-            const query = document.getElementById('searchBar').value.toLowerCase().trim();
-            const catFilter = document.getElementById('categoryFilter').value;
-            const diffFilter = document.getElementById('difficultyFilter').value;
-
-            let filteredResults = allChallenges;
-
-            // 1. Text Search filtering (if user typed something)
-            if (query.length > 1) {
-                const searchResults = miniSearch.search(query);
-                // Map the MiniSearch result IDs back to the full challenge objects
-                filteredResults = searchResults.map(res => allChallenges.find(c => c.id === res.id));
-            }
-
-            // 2. Dropdown filtering
-            filteredResults = filteredResults.filter(chal => {
-                let matchCat = true;
-                let matchDiff = true;
-
-                if (catFilter) {
-                    const chalCats = Array.isArray(chal.category) ? chal.category : [chal.category];
-                    matchCat = chalCats.includes(catFilter);
-                }
-
-                if (diffFilter) {
-                    matchDiff = (chal.difficulty === diffFilter);
-                }
-
-                return matchCat && matchDiff;
-            });
-
-            renderGrid(filteredResults);
-        }
-
-        // Attach listeners to search inputs
-        document.getElementById('searchBar').addEventListener('input', handleFilters);
-        document.getElementById('categoryFilter').addEventListener('change', handleFilters);
-        document.getElementById('difficultyFilter').addEventListener('change', handleFilters);
-
-        // Render Cards
-        function renderGrid(data) {
-            const grid = document.getElementById('challengeGrid');
-            
-            if (data.length === 0) {
-                grid.innerHTML = `<p style="color:var(--text-muted); grid-column: 1/-1; text-align: center;">No challenges found matching your filters.</p>`;
-                return;
-            }
-
-            grid.innerHTML = data.map(chal => {
-                const authors = chal.authors && chal.authors.length > 0 ? chal.authors.join(', ') : 'Unknown';
-                const categories = Array.isArray(chal.category) ? chal.category.join(', ') : chal.category;
-                
-                // Color code difficulty
-                let diffColor = '#8b949e';
-                if(chal.difficulty === 'Easy') diffColor = '#238636';
-                if(chal.difficulty === 'Medium') diffColor = '#d29922';
-                if(chal.difficulty === 'Hard') diffColor = '#da3633';
-
-                return `
-                <div class="card" onclick="openChallenge('${chal.id}')">
-                    <h3>${chal.name}</h3>
-                    <div class="tags">
-                        <span class="tag" style="border-color: ${diffColor}; color: ${diffColor}">${chal.difficulty}</span>
-                        <span class="tag">${categories}</span>
-                    </div>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">By: ${authors}</p>
-                </div>
-                `;
-            }).join('');
-        }
-
-        // Force cross-origin files to download instead of opening in a new tab
-        async function forceDownload(url, filename) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Network response was not ok");
-                const blob = await response.blob();
-                
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = blobUrl;
-                a.download = filename; 
-                
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(blobUrl);
-                document.body.removeChild(a);
-            } catch (error) {
-                console.error('Download failed:', error);
-                window.open(url, '_blank');
             }
         }
-
-        // View Full Challenge
-        async function openChallenge(id) {
-            // UI Toggle
-            document.getElementById('list-view').style.display = 'none';
-            document.getElementById('detail-view').style.display = 'block';
-            document.getElementById('det-title').innerText = "Loading...";
-            
-            // Reset state
-            document.getElementById('flagInput').value = '';
-            document.getElementById('flagStatus').innerText = '';
-            currentChallengeData = null;
-
-            try {
-                // Fetch the heavy JSON file for this specific challenge
-                const response = await fetch(`${API_BASE}/challenges/${id}.json`);
-                const chal = await response.json();
-                currentChallengeData = chal;
-
-                const authors = chal.authors ? chal.authors.map(a => `<a href="${a.url}" target="_blank" style="color:var(--accent)">${a.name}</a>`).join(', ') : 'Unknown';
-                const categories = Array.isArray(chal.category) ? chal.category.join(', ') : chal.category;
-
-                document.getElementById('det-title').innerText = chal.name;
-                document.getElementById('det-cat').innerHTML = `<b>Category:</b> ${categories}`;
-                document.getElementById('det-diff').innerHTML = `<b>Difficulty:</b> ${chal.difficulty}`;
-                document.getElementById('det-author').innerHTML = `<b>Author(s):</b> ${authors}`;
-                document.getElementById('det-desc').innerHTML = chal.description;
-
-                // Render Assets (With force-download and URI encoding)
-                const assetsDiv = document.getElementById('det-assets');
-                if (chal.assets && chal.assets.length > 0) {
-                    assetsDiv.innerHTML = `<h3>Assets</h3>` + chal.assets.map(asset => {
-                        const cleanAsset = asset.replace('./', '');
-                        
-                        const folderPath = chal.repo_path || `${chal.category[0]}/${chal.name}`;
-                        
-                        const safeFolderPath = encodeURI(folderPath);
-                        const safeAssetFile = encodeURIComponent(cleanAsset);
-                        const downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${safeFolderPath}/${safeAssetFile}`;
-                        
-                        return `<a href="javascript:void(0)" onclick="forceDownload('${downloadUrl}', '${cleanAsset}')" class="asset-link">⬇️ Download ${cleanAsset}</a>`;
-                    }).join('');
-                } else {
-                    assetsDiv.innerHTML = '';
-                }
-
-                // Render Hints
-                const hintsDiv = document.getElementById('det-hints');
-                if (chal.hints && chal.hints.length > 0) {
-                    hintsDiv.innerHTML = `<h3>Hints</h3>` + chal.hints.map((hint, index) => `
-                        <div>
-                            <button class="hint-btn" onclick="toggleHint(${index})">Reveal Hint ${index + 1}</button>
-                            <div class="hint-content" id="hint-${index}">${hint}</div>
-                        </div>
-                    `).join('');
-                } else {
-                    hintsDiv.innerHTML = '';
-                }
-
-            } catch (error) {
-                document.getElementById('det-title').innerText = "Error loading challenge data.";
-                console.error(error);
-            }
-        }
-
-        function toggleHint(index) {
-            const hintEl = document.getElementById(`hint-${index}`);
-            hintEl.style.display = hintEl.style.display === 'block' ? 'none' : 'block';
-        }
-
-        function showListView() {
-            document.getElementById('detail-view').style.display = 'none';
-            document.getElementById('list-view').style.display = 'block';
-        }
-
-        // Flag Checker Logic
-        document.getElementById('submitFlagBtn').addEventListener('click', () => {
-            if (!currentChallengeData) return;
-            
-            const userInput = document.getElementById('flagInput').value.trim();
-            const statusEl = document.getElementById('flagStatus');
-
-            if (currentChallengeData.flags && currentChallengeData.flags.includes(userInput)) {
-                statusEl.style.color = "var(--success)";
-                statusEl.innerText = "🎉 Correct! You've captured the flag.";
-            } else {
-                statusEl.style.color = "var(--danger)";
-                statusEl.innerText = "❌ Incorrect flag. Keep trying!";
-            }
-        });
-
-        // Start the app
-        initApp();
     </script>
+    <link rel="stylesheet" href="/style.css"> 
+    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
+</head>
+<body class="bg-canvas text-ink font-sans min-h-screen antialiased selection:bg-cyan selection:text-ink">
+
+    <div class="fixed inset-0 pointer-events-none bg-[linear-gradient(to_right,#80808020_1px,transparent_1px),linear-gradient(to_bottom,#80808020_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+
+    <nav class="sticky top-0 z-50 border-b-2 border-ink bg-white">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+            <a href="/practice/challenges" data-nav class="flex items-center gap-3 group cursor-pointer block">
+                <span class="w-3 h-3 bg-danger border-2 border-ink"></span>
+                <span class="font-black text-xl uppercase tracking-tighter text-ink bg-cyan px-2 border-2 border-ink shadow-[2px_2px_0_0_#0b0b0b] group-hover:translate-x-[1px] group-hover:translate-y-[1px] group-hover:shadow-[1px_1px_0_0_#0b0b0b] transition-all duration-75">
+                    HAXNATION
+                </span>
+                <span class="hidden sm:inline font-mono text-[10px] font-bold uppercase tracking-widest text-ink border-2 border-ink px-1.5 py-0.5 bg-canvas">CTF_SYS</span>
+            </a>
+
+            <div class="hidden md:flex items-center gap-6 font-mono text-sm font-bold uppercase">
+                <a href="/practice/challenges" data-nav id="tab-practice" class="text-ink border-b-4 border-ink pb-1 block">Practice</a>
+                <a href="/compete/events" data-nav id="tab-compete" class="text-gray-400 hover:text-ink hover:border-ink border-b-4 border-transparent pb-1 transition-colors duration-0 block">Compete</a>
+            </div>
+
+            <div id="auth-section" class="flex items-center gap-3">
+                <button id="login-btn" class="hidden font-mono uppercase tracking-widest font-bold bg-danger text-white border-2 border-ink px-6 py-2 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                    Login
+                </button>
+
+                <div id="user-info" class="hidden flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-white border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]">
+                        <div class="w-6 h-6 bg-cyan border-2 border-ink flex items-center justify-center">
+                            <span class="font-mono text-[10px] font-bold text-ink" id="user-avatar-initials">U</span>
+                        </div>
+                        <span id="user-name" class="hidden sm:inline font-mono text-xs font-bold text-ink uppercase"></span>
+                    </div>
+                    <button id="logout-btn" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-3 py-2 hover:bg-ink hover:text-white transition-colors duration-0">Exit</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-10 relative z-10">
+
+        <div id="section-practice">
+            <div class="mb-10">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-cyan inline-block px-2 border-2 border-ink">SYS // TRAINING GROUNDS</p>
+                <h1 class="text-5xl sm:text-7xl font-black text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
+                    Practice Arena<span class="inline-block w-4 h-[0.8em] bg-cyan animate-pulse align-middle ml-2 border-2 border-ink"></span>
+                </h1>
+            </div>
+
+            <div class="flex gap-6 mb-8 border-b-2 border-ink font-mono text-sm font-bold uppercase tracking-widest">
+                <a href="/practice/events" data-nav id="subnav-practice-events" class="text-gray-400 hover:text-ink border-b-4 border-transparent pb-3 transition-colors duration-0 block">Events</a>
+                <a href="/practice/challenges" data-nav id="subnav-practice-challenges" class="text-ink border-b-4 border-ink pb-3 transition-colors duration-0 block">Challenges</a>
+            </div>
+
+            <div id="practice-view-events" class="hidden bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center">
+                <p class="text-ink font-mono text-lg font-bold uppercase tracking-widest bg-danger text-white inline-block px-4 py-2 border-2 border-ink mb-4 shadow-[4px_4px_0_0_#0b0b0b]">ARCHIVE_OFFLINE</p>
+                <p class="text-ink font-mono text-sm">Historical operations are currently unavailable.</p>
+            </div>
+
+            <div id="practice-view-challenges">
+                
+                <div class="mb-8 bg-white border-2 border-ink p-4 shadow-[4px_4px_0_0_#0b0b0b] flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Query_String</label>
+                        <input type="text" id="searchBar" autocomplete="off" placeholder="Search targets..." class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan focus:bg-ink focus:text-cyan transition-colors duration-0" />
+                        
+                        <div id="searchSuggestions" class="hidden absolute top-full left-0 right-0 mt-2 bg-white border-2 border-ink shadow-[4px_4px_0_0_#0b0b0b] z-30 flex flex-col"></div>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Difficulty</label>
+                        <select id="filterDifficulty" class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan cursor-pointer appearance-none rounded-none focus:bg-ink focus:text-cyan transition-colors duration-0">
+                            <option value="all">ALL</option>
+                            <option value="easy">EASY</option>
+                            <option value="medium">MEDIUM</option>
+                            <option value="hard">HARD</option>
+                        </select>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Category</label>
+                        <select id="filterCategory" class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan cursor-pointer appearance-none rounded-none focus:bg-ink focus:text-cyan transition-colors duration-0">
+                            <option value="all">ALL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="loading-practice" class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
+                    <p class="font-mono text-sm font-bold uppercase tracking-widest text-ink animate-pulse">> Booting up mainframe...</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="practice-challenges-grid"></div>
+            </div>
+        </div>
+
+        <div id="section-compete" class="hidden">
+            <div class="mb-10">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-danger text-white inline-block px-2 border-2 border-ink">SYS // ACTIVE OPERATIONS</p>
+                <h1 class="text-5xl sm:text-7xl font-black text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
+                    Live Network<span class="inline-block w-4 h-[0.8em] bg-danger animate-pulse align-middle ml-2 border-2 border-ink"></span>
+                </h1>
+            </div>
+
+            <div class="flex gap-6 mb-8 border-b-2 border-ink font-mono text-sm font-bold uppercase tracking-widest">
+                <a href="/compete/events" data-nav id="subnav-compete-events" class="text-ink border-b-4 border-ink pb-3 transition-colors duration-0 block">Events</a>
+                <a href="/compete/challenges" data-nav id="subnav-compete-challenges" class="text-gray-400 hover:text-ink border-b-4 border-transparent pb-3 transition-colors duration-0 block">Challenges</a>
+            </div>
+            
+            <div id="compete-view-events">
+                <div id="compete-events-list">
+                    <div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
+                        <p class="font-mono text-sm font-bold uppercase tracking-widest text-ink animate-pulse">> Waiting for uplink...</p>
+                    </div>
+                </div>
+
+                <div id="compete-event-dashboard" class="hidden">
+                    <button onclick="window.showEventsList()" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-4 py-2 hover:bg-ink hover:text-white transition-colors duration-0 mb-6 shadow-[2px_2px_0_0_#0b0b0b]">
+                        [←] Back to Events
+                    </button>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-2 border-ink bg-white p-6 shadow-[4px_4px_0_0_#0b0b0b]">
+                        <h2 id="compete-event-title" class="text-3xl font-black uppercase tracking-tight text-ink">Loading Event...</h2>
+                        <button onclick="window.showLeaderboard()" class="font-mono text-xs font-bold uppercase tracking-widest bg-cyan text-ink border-2 border-ink px-6 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                            > Leaderboard
+                        </button>
+                    </div>
+                    <div id="compete-event-challenges-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
+                
+                <div id="compete-leaderboard" class="hidden bg-white border-4 border-ink p-6 sm:p-10 shadow-[8px_8px_0_0_#0b0b0b]">
+                    <button onclick="window.hideLeaderboard()" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-4 py-2 hover:bg-ink hover:text-white transition-colors duration-0 mb-6 shadow-[2px_2px_0_0_#0b0b0b]">
+                        [←] Back to Challenges
+                    </button>
+                    <h2 class="text-4xl font-black uppercase text-ink border-b-4 border-ink pb-2 mb-6">Live Rankings</h2>
+                    <table class="w-full text-left border-collapse border-2 border-ink bg-white">
+                        <thead>
+                            <tr class="border-b-2 border-ink bg-canvas font-mono text-sm font-bold text-ink uppercase tracking-widest">
+                                <th class="p-4 border-r-2 border-ink">Rank</th>
+                                <th class="p-4 border-r-2 border-ink">Hacker</th>
+                                <th class="p-4 text-right">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-content" class="text-sm font-mono"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="compete-view-challenges" class="hidden">
+                <div id="compete-independent-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </div>
+
+        <div id="detail-view" class="hidden bg-white border-4 border-ink shadow-[12px_12px_0_0_#5ce1e6] p-0 max-w-4xl mx-auto absolute top-0 left-6 right-6 z-20">
+            <div class="bg-ink text-cyan p-4 font-mono font-bold flex justify-between items-center border-b-4 border-ink">
+                <span class="uppercase tracking-widest">> SYSTEM_OVERRIDE_ACTIVE</span>
+                <button onclick="window.history.back()" class="text-cyan hover:bg-cyan hover:text-ink px-2 py-1 transition-colors duration-0 border border-transparent hover:border-ink uppercase">
+                    [X] Terminate
+                </button>
+            </div>
+            
+            <div class="p-6 sm:p-10">
+                <h1 id="det-title" class="text-4xl sm:text-5xl font-black text-ink uppercase tracking-tighter mb-6 border-b-2 border-ink pb-2">Loading...</h1>
+                
+                <div class="flex flex-wrap gap-4 font-mono text-xs font-bold uppercase mb-8 pb-6 border-b-2 border-ink">
+                    <span class="border-2 border-ink bg-canvas px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-cat"></span>
+                    <span class="border-2 border-ink bg-canvas px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-diff"></span>
+                    <span class="border-2 border-ink bg-black text-white px-3 py-1 shadow-[2px_2px_0_0_#5ce1e6]" id="det-author-points"></span>
+
+                    <span class="hidden border-2 border-ink bg-cyan text-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-solves"></span>
+            <span class="hidden border-2 border-ink bg-danger text-white px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-firstblood"></span>
+                </div>
+                
+                <div id="det-desc" class="text-ink font-sans leading-relaxed mb-8 text-lg"></div>
+                <div id="det-assets" class="flex flex-wrap gap-4 mb-8"></div>
+                <div id="det-hints" class="space-y-4 mb-8"></div>
+
+                <div class="border-2 border-ink bg-canvas p-6 mt-8 shadow-[4px_4px_0_0_#0b0b0b]">
+                    <label class="font-mono text-xs font-bold uppercase mb-2 block">> Enter Flag</label>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="flagInput" placeholder="FLAG" class="border-2 border-ink bg-white p-3 font-mono text-sm rounded-none focus:outline-none focus:ring-0 focus:border-cyan focus:bg-ink focus:text-cyan transition-colors duration-75 flex-1 shadow-[inset_2px_2px_0_0_#e5e5e5]">
+                        <button id="submitFlagBtn" class="font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                            Execute
+                        </button>
+                    </div>
+                    <div id="flagStatus" class="mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module" src="/js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js" integrity="sha256-qV4Cjl79anQT0dGNbZ+Rj9rRnivm6WL8uqEKsbNkclw=" crossorigin="anonymous"></script>
 </body>
 </html>
