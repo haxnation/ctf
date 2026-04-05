@@ -84,10 +84,48 @@ async function fetchStaticData() {
 }
 
 // ==========================================
+// PRACTICE CACHE & SYNC SYSTEM
+// ==========================================
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+async function syncPracticeSolvesFromServer() {
+    if (!state.currentUser) return [];
+    try {
+        const res = await fetch(`${API_BASE_URL}/practice/solves`, { credentials: 'include' });
+        const data = await res.json();
+        const solves = data.solvedChallenges || [];
+        
+        localStorage.setItem('practice_solves_data', JSON.stringify({
+            solves: solves,
+            expiresAt: Date.now() + CACHE_TTL
+        }));
+        return solves;
+    } catch (err) {
+        console.error("Error syncing practice solves:", err);
+        const oldCacheRaw = localStorage.getItem('practice_solves_data');
+        return oldCacheRaw ? JSON.parse(oldCacheRaw).solves : [];
+    }
+}
+
+async function getPracticeSolves() {
+    if (!state.currentUser) return [];
+    const cachedDataRaw = localStorage.getItem('practice_solves_data');
+    
+    if (cachedDataRaw) {
+        const cachedData = JSON.parse(cachedDataRaw);
+        if (Date.now() < cachedData.expiresAt) {
+            return cachedData.solves; 
+        }
+    }
+    return await syncPracticeSolvesFromServer();
+}
+
+
+// ==========================================
 // SEARCH & FILTER SYSTEM
 // ==========================================
 
-function applyFilters() {
+async function applyFilters() {
     const query = document.getElementById('searchBar')?.value.toLowerCase() || '';
     const diff = document.getElementById('filterDifficulty')?.value || 'all';
     const cat = document.getElementById('filterCategory')?.value || 'all';
@@ -120,7 +158,7 @@ function applyFilters() {
         });
     }
 
-    renderPracticeGrid(results);
+    await renderPracticeGrid(results);
 }
 
 function handleSearchInput(e) {
@@ -180,9 +218,53 @@ function setupListeners() {
         if (!userInput) return;
 
         if (window.currentMode === 'practice-challenges') {
-            if (window.currentChallengeData.flags && window.currentChallengeData.flags.includes(userInput)) {
-                statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
-                statusEl.innerText = "> SYSTEM: FLAG_VERIFIED";
+             if (window.currentChallengeData.flags && window.currentChallengeData.flags.includes(userInput)) {
+                
+                statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink animate-pulse';
+                statusEl.innerText = "> VERIFYING_RECORD...";
+
+                if (state.currentUser) {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/practice/${window.currentChallengeData.id}/record-solve`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include'
+                        });
+                        const data = await res.json();
+
+                        if (data.success || data.alreadySolved) {
+                            if (data.alreadySolved) {
+                                console.log("Stale cache detected. Syncing...");
+                                await syncPracticeSolvesFromServer();
+                            } else {
+                                // OPTIMISTIC CACHE UPDATE (No DB Refresh)
+                                const cachedDataRaw = localStorage.getItem('practice_solves_data');
+                                if (cachedDataRaw) {
+                                    const cachedData = JSON.parse(cachedDataRaw);
+                                    if (!cachedData.solves.includes(window.currentChallengeData.id)) {
+                                        cachedData.solves.push(window.currentChallengeData.id);
+                                        localStorage.setItem('practice_solves_data', JSON.stringify(cachedData));
+                                    }
+                                }
+                            }
+                            statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
+                            statusEl.innerText = "> SYSTEM: FLAG_VERIFIED & RECORDED";
+                            
+                            // Re-render UI in the background to show 'SOLVED' badge
+                            applyFilters(); 
+                        } else {
+                            statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
+                            statusEl.innerText = `> ERR: ${data.error || 'RECORD_FAILED'}`;
+                        }
+                    } catch (err) {
+                        statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
+                        statusEl.innerText = "> ERR: NETWORK_ANOMALY WHILE RECORDING";
+                    }
+                } else {
+                    // Validated locally, but user isn't logged in to record it
+                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
+                    statusEl.innerText = "> SYSTEM: FLAG_VERIFIED (NOT RECORDED - LOGIN REQ)";
+                }
             } else {
                 statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
                 statusEl.innerText = "> ERR: HASH_MISMATCH";
@@ -402,13 +484,19 @@ async function openEvent(eventId, eventName) {
 // RENDER HELPERS
 // ==========================================
 
-function renderPracticeGrid(data) {
+async function renderPracticeGrid(data) {
     const grid = document.getElementById('practice-challenges-grid');
     if (data.length === 0) {
         grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-ink">> NO TARGETS FOUND</p></div>`;
         return;
     }
+
+    // 1. Fetch solved IDs from Cache (Instant & 0 DB cost)
+    const solvedIds = await getPracticeSolves();
+
     grid.innerHTML = data.map(chal => {
+        const isSolved = solvedIds.includes(chal.id);
+        
         let diffColorClass = 'bg-canvas text-ink';
         if(chal.difficulty === 'Easy') diffColorClass = 'bg-cyan text-ink';
         if(chal.difficulty === 'Medium') diffColorClass = 'bg-ink text-white';
@@ -419,9 +507,18 @@ function renderPracticeGrid(data) {
         const safeCat = DOMPurify.sanitize(Array.isArray(chal.category) ? chal.category.join(', ') : (chal.category || ''));
         const safeAuthors = DOMPurify.sanitize(chal.authors && chal.authors.length > 0 ? chal.authors.join(', ') : 'UNKNOWN_AUTHOR');
 
+        // 2. Adjust styling if solved
+        let cardBgClass = isSolved ? 'bg-cyan' : 'bg-white';
+        let solvedBadge = isSolved 
+            ? `<span class="font-mono text-[12px] font-bold uppercase border-2 border-ink bg-white text-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b]">SOLVED</span>`
+            : '';
+
         return `
-        <a href="/challenge/practice/${chal.id}" data-nav class="border-2 border-ink bg-white p-5 rounded-none shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] hover:bg-ink hover:text-white transition-all duration-75 flex flex-col cursor-pointer group block text-left">
-            <h3 class="font-black text-xl uppercase tracking-tighter mb-4 border-b-2 border-ink group-hover:border-white pb-2 truncate">${safeName}</h3>
+        <a href="/challenge/practice/${chal.id}" data-nav class="border-2 border-ink ${cardBgClass} p-5 rounded-none shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] hover:bg-ink hover:text-white transition-all duration-75 flex flex-col cursor-pointer group block text-left">
+            <div class="flex justify-between items-start mb-4 border-b-2 border-ink group-hover:border-white pb-2">
+                <h3 class="font-black text-xl uppercase tracking-tighter truncate">${safeName}</h3>
+                ${solvedBadge}
+            </div>
             <div class="flex flex-wrap gap-2 mb-6">
                 <span class="border-2 border-ink px-2 py-1 font-mono text-[10px] font-bold uppercase shadow-[2px_2px_0_0_#0b0b0b] group-hover:border-white ${diffColorClass}">${safeDiff}</span>
                 <span class="border-2 border-ink bg-white text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">${safeCat}</span>
