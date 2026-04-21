@@ -356,7 +356,7 @@ function setupListeners() {
 
             const provider = new ethers.BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
-            const message = `HaxNation_Auth_${state.currentUser.user_id}`;
+            const message = `HaxNation_Auth_${state.currentUser.id}`;
             const signature = await signer.signMessage(message);
 
             statusEl.innerText = "> QUERYING_BLOCKCHAIN...";
