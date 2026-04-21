@@ -210,6 +210,9 @@ function setupListeners() {
         }
     });
 
+    // ==========================================
+    // STANDARD CTF FLAG SUBMISSION
+    // ==========================================
     document.getElementById('submitFlagBtn')?.addEventListener('click', async () => {
         if (!window.currentChallengeData) return;
         
@@ -234,10 +237,8 @@ function setupListeners() {
 
                         if (data.success || data.alreadySolved) {
                             if (data.alreadySolved) {
-                                console.log("Stale cache detected. Syncing...");
                                 await syncPracticeSolvesFromServer();
                             } else {
-                                // OPTIMISTIC CACHE UPDATE (No DB Refresh)
                                 const cachedDataRaw = localStorage.getItem('practice_solves_data');
                                 if (cachedDataRaw) {
                                     const cachedData = JSON.parse(cachedDataRaw);
@@ -249,8 +250,6 @@ function setupListeners() {
                             }
                             statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
                             statusEl.innerText = "> SYSTEM: FLAG_VERIFIED & RECORDED";
-                            
-                            // Re-render UI in the background to show 'SOLVED' badge
                             applyFilters(); 
                         } else {
                             statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
@@ -261,7 +260,6 @@ function setupListeners() {
                         statusEl.innerText = "> ERR: NETWORK_ANOMALY WHILE RECORDING";
                     }
                 } else {
-                    // Validated locally, but user isn't logged in to record it
                     statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
                     statusEl.innerText = "> SYSTEM: FLAG_VERIFIED (NOT RECORDED - LOGIN REQ)";
                 }
@@ -298,6 +296,97 @@ function setupListeners() {
                 statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
                 statusEl.innerText = "> ERR: NETWORK_ANOMALY";
             }
+        }
+    });
+
+    // ==========================================
+    // WEB3: METAMASK CONNECTION & VALIDATION
+    // ==========================================
+    let userWallet = null;
+
+    document.getElementById('connectWalletBtn')?.addEventListener('click', async () => {
+        const statusEl = document.getElementById('flagStatus');
+        
+        if (!window.ethereum) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: METAMASK NOT DETECTED";
+            return;
+        }
+
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            
+            // Force Sepolia network
+            const network = await provider.getNetwork();
+            if (network.chainId !== 11155111n) {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0xaa36a7' }], // 11155111 in hex
+                });
+            }
+
+            const accounts = await provider.send("eth_requestAccounts", []);
+            userWallet = accounts[0];
+            
+            document.getElementById('connectWalletBtn').classList.add('hidden');
+            document.getElementById('validateWeb3Btn').classList.remove('hidden');
+            
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-ink bg-cyan inline-block px-2 border-2 border-ink';
+            statusEl.innerText = `> CONNECTED: ${userWallet.substring(0,6)}...${userWallet.substring(38)}`;
+        } catch (err) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: WALLET CONNECTION FAILED OR WRONG NETWORK";
+        }
+    });
+
+    document.getElementById('validateWeb3Btn')?.addEventListener('click', async () => {
+        const statusEl = document.getElementById('flagStatus');
+        
+        if (!state.currentUser) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: PLEASE LOGIN TO PLATFORM FIRST";
+            return;
+        }
+
+        if (!userWallet) return;
+
+        try {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-ink bg-canvas border-2 border-ink inline-block px-2 animate-pulse';
+            statusEl.innerText = "> SIGNING_PAYLOAD...";
+
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const message = `HaxNation_Auth_${state.currentUser.user_id}`;
+            const signature = await signer.signMessage(message);
+
+            statusEl.innerText = "> QUERYING_BLOCKCHAIN...";
+
+            const endpointUrl = window.currentMode === 'compete-event' 
+                ? `${API_BASE_URL}/events/${window.activeEventId}/challenges/${window.currentChallengeData.id}/submit-web3`
+                : `${API_BASE_URL}/challenges/${window.currentChallengeData.id}/submit-web3`;
+
+            const res = await fetch(endpointUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    walletAddress: userWallet,
+                    signature: signature 
+                })
+            });
+
+            const data = await res.json();
+            
+            if (data.success) {
+                statusEl.className = 'mt-4 font-mono text-sm font-bold text-ink bg-cyan inline-block px-2 border-2 border-ink';
+                statusEl.innerText = `> SUCCESS: +${data.points} PTS`;
+            } else {
+                statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+                statusEl.innerText = `> ERR: ${data.error || data.message || 'VERIFICATION_FAILED'}`;
+            }
+        } catch (err) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: TRANSACTION_OR_NETWORK_ERROR";
         }
     });
 }
@@ -572,7 +661,7 @@ function renderCompeteCard(chal, solvedList, mode) {
 }
 
 // ==========================================
-// GLOBAL DETAIL VIEW
+// GLOBAL DETAIL VIEW & WEB3 INJECTION
 // ==========================================
 
 async function openChallenge(id, mode) {
@@ -660,11 +749,39 @@ async function openChallenge(id, mode) {
             document.getElementById('det-author-points').innerText = `PTS: ${chal.points || 0}`;
         }
 
-        document.getElementById('det-desc').innerHTML = DOMPurify.sanitize(
-            chal.description 
-                ? chal.description.replace(/\[REDACTED\]/g, '<span class="bg-black text-black hover:text-[#5ce1e6] selection:bg-[#ff2a2a] cursor-crosshair transition-none select-none">CLASSIFIED</span>')
-                : "> NO_DESCRIPTION_PROVIDED"
-        );
+        // Web3 Check & UI Override
+        const isWeb3 = chal.category && (Array.isArray(chal.category) ? chal.category.some(c => c.toLowerCase() === 'web3') : chal.category.toLowerCase() === 'web3');
+        const flagInput = document.getElementById('flagInput');
+        const submitFlagBtn = document.getElementById('submitFlagBtn');
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const validateWeb3Btn = document.getElementById('validateWeb3Btn');
+
+        let rawDescription = chal.description 
+            ? chal.description.replace(/\[REDACTED\]/g, '<span class="bg-black text-black hover:text-[#5ce1e6] selection:bg-[#ff2a2a] cursor-crosshair transition-none select-none">CLASSIFIED</span>')
+            : "> NO_DESCRIPTION_PROVIDED";
+
+        if (isWeb3) {
+            flagInput.classList.add('hidden');
+            submitFlagBtn.classList.add('hidden');
+            connectWalletBtn.classList.remove('hidden');
+            validateWeb3Btn.classList.add('hidden'); // Remains hidden until wallet connects
+
+            // Inject Contract Address into description
+            document.getElementById('det-desc').innerHTML = `
+                <div class="mb-4 bg-canvas border-2 border-ink p-4">
+                    <span class="font-bold text-xs uppercase block mb-1">> Target Contract (Sepolia)</span>
+                    <code class="text-cyan bg-ink px-2 py-1 select-all">${DOMPurify.sanitize(chal.contractAddress || 'ADDRESS_MISSING')}</code>
+                </div>
+                ${DOMPurify.sanitize(rawDescription)}
+            `;
+        } else {
+            flagInput.classList.remove('hidden');
+            submitFlagBtn.classList.remove('hidden');
+            connectWalletBtn.classList.add('hidden');
+            validateWeb3Btn.classList.add('hidden');
+            
+            document.getElementById('det-desc').innerHTML = DOMPurify.sanitize(rawDescription);
+        }
 
         const assetsDiv = document.getElementById('det-assets');
         if (chal.assets && chal.assets.length > 0) {
