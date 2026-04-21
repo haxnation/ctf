@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -25,8 +26,6 @@
         }
     </script> 
     <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 </head>
 <body class="bg-canvas text-ink font-sans min-h-screen antialiased selection:bg-cyan selection:text-ink">
 
@@ -200,23 +199,12 @@
 
                 <div class="border-2 border-ink bg-canvas p-6 mt-8 shadow-[4px_4px_0_0_#0b0b0b]">
                     <label class="font-mono text-xs font-bold uppercase mb-2 block">> Enter Flag</label>
-                    
-                    <div id="submission-container" class="flex flex-col sm:flex-row gap-4">
-                        
+                    <div class="flex flex-col sm:flex-row gap-4">
                         <input type="text" id="flagInput" placeholder="FLAG" class="border-2 border-ink bg-white p-3 font-mono text-sm rounded-none focus:outline-none focus:ring-0 focus:border-cyan focus:bg-ink focus:text-cyan transition-colors duration-75 flex-1 shadow-[inset_2px_2px_0_0_#e5e5e5]">
                         <button id="submitFlagBtn" class="font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
                             Execute
                         </button>
-                        
-                        <button id="connectWalletBtn" class="hidden font-mono uppercase tracking-widest font-bold bg-ink text-white border-2 border-ink px-8 py-3 hover:bg-cyan hover:text-ink transition-all flex-1 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none duration-75">
-                            Connect MetaMask
-                        </button>
-                        <button id="validateWeb3Btn" class="hidden font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
-                            Validate on Blockchain
-                        </button>
-                        
                     </div>
-                    
                     <div id="flagStatus" class="mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest"></div>
                 </div>
             </div>
