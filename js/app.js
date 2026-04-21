@@ -742,12 +742,12 @@ async function openChallenge(id, mode) {
             }
         }
 
-        if (mode === 'practice-challenges') {
-            const authors = chal.authors ? chal.authors.map(a => `<a href="${DOMPurify.sanitize(a.url)}" target="_blank" class="hover:underline hover:text-cyan">${DOMPurify.sanitize(a.name)}</a>`).join(', ') : 'UNKNOWN';
-            document.getElementById('det-author-points').innerHTML = DOMPurify.sanitize(`AUTH: ${authors}`);
-        } else {
-            document.getElementById('det-author-points').innerText = `PTS: ${chal.points || 0}`;
-        }
+        // Always show author
+        const authors = chal.authors ? chal.authors.map(a => `<a href="${DOMPurify.sanitize(a.url)}" target="_blank" class="hover:underline hover:text-cyan">${DOMPurify.sanitize(a.name)}</a>`).join(', ') : 'UNKNOWN';
+        document.getElementById('det-author').innerHTML = DOMPurify.sanitize(`AUTH: ${authors}`);
+        
+        // Always show points (Practice challenges might have 0 points, which is fine)
+        document.getElementById('det-points').innerText = `PTS: ${chal.points || 0}`;
 
         // Web3 Check & UI Override
         const isWeb3 = chal.category && (Array.isArray(chal.category) ? chal.category.some(c => c.toLowerCase() === 'web3') : chal.category.toLowerCase() === 'web3');
