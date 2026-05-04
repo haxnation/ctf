@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HaxNation — CTF Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/aws-intercept.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        canvas: '#fafafa', ink: '#0b0b0b',
+                        cyan: '#5ce1e6', danger: '#ff2a2a'
+                    },
+                    fontFamily: {
+                        sans: ['"Inter"', 'sans-serif'],
+                        mono: ['"Fira Code"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script> 
+    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js" defer></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js" defer></script>
+</head>
+<body class="bg-canvas text-ink font-sans min-h-screen antialiased selection:bg-cyan selection:text-ink">
+
+    <div class="fixed inset-0 pointer-events-none bg-[linear-gradient(to_right,#80808020_1px,transparent_1px),linear-gradient(to_bottom,#80808020_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+
+    <nav class="sticky top-0 z-50 border-b-2 border-ink bg-white">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+        <a href="/practice/challenges" data-nav class="flex items-center gap-3 group cursor-pointer block">
+            <span class="w-3 h-3 bg-danger border-2 border-ink"></span>
+            
+            <span class="flex items-center border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b] group-hover:translate-x-[1px] group-hover:translate-y-[1px] group-hover:shadow-[1px_1px_0_0_#0b0b0b] transition-all duration-75">
+                <img src="https://haxnation.org/images/logo.png" alt="HAXNATION" class="h-8 w-auto block object-contain">
+            </span>
+
+            <span class="hidden sm:inline font-mono text-[10px] font-bold uppercase tracking-widest text-ink border-2 border-ink px-1.5 py-0.5 bg-canvas">CTF_SYS</span>
+        </a>
+
+        <div class="hidden md:flex items-center gap-6 font-mono text-sm font-bold uppercase">
+            <a href="/practice/challenges" data-nav id="tab-practice" class="text-ink border-b-4 border-ink pb-1 block">Practice</a>
+            <a href="/compete/events" data-nav id="tab-compete" class="text-gray-400 hover:text-ink hover:border-ink border-b-4 border-transparent pb-1 transition-colors duration-0 block">Compete</a>
+        </div>
+
+        <div id="auth-section" class="flex items-center gap-3">
+            <button id="login-btn" class="hidden font-mono uppercase tracking-widest font-bold bg-danger text-white border-2 border-ink px-6 py-2 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                Login
+            </button>
+
+            <div id="user-info" class="hidden flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-white border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]">
+                    <div class="w-6 h-6 bg-cyan border-2 border-ink flex items-center justify-center">
+                        <span class="font-mono text-[10px] font-bold text-ink" id="user-avatar-initials">U</span>
+                    </div>
+                    <span id="user-name" class="hidden sm:inline font-mono text-xs font-bold text-ink uppercase"></span>
+                </div>
+                <button id="logout-btn" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-3 py-2 hover:bg-ink hover:text-white transition-colors duration-0">Exit</button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-10 relative z-10">
+
+        <div id="section-practice">
+            <div class="mb-10">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-cyan inline-block px-2 border-2 border-ink">SYS // TRAINING GROUNDS</p>
+                <h1 class="text-5xl sm:text-7xl font-black text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
+                    Practice Arena<span class="inline-block w-4 h-[0.8em] bg-cyan animate-pulse align-middle ml-2 border-2 border-ink"></span>
+                </h1>
+            </div>
+
+            <div class="flex gap-6 mb-8 border-b-2 border-ink font-mono text-sm font-bold uppercase tracking-widest">
+                <a href="/practice/events" data-nav id="subnav-practice-events" class="text-gray-400 hover:text-ink border-b-4 border-transparent pb-3 transition-colors duration-0 block">Events</a>
+                <a href="/practice/challenges" data-nav id="subnav-practice-challenges" class="text-ink border-b-4 border-ink pb-3 transition-colors duration-0 block">Challenges</a>
+            </div>
+
+            <div id="practice-view-events" class="hidden bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center">
+                <p class="text-ink font-mono text-lg font-bold uppercase tracking-widest bg-danger text-white inline-block px-4 py-2 border-2 border-ink mb-4 shadow-[4px_4px_0_0_#0b0b0b]">ARCHIVE_OFFLINE</p>
+                <p class="text-ink font-mono text-sm">Historical operations are currently unavailable.</p>
+            </div>
+
+            <div id="practice-view-challenges">
+                
+                <div class="mb-8 bg-white border-2 border-ink p-4 shadow-[4px_4px_0_0_#0b0b0b] flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Query_String</label>
+                        <input type="text" id="searchBar" autocomplete="off" placeholder="Search targets..." class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan focus:bg-ink focus:text-cyan transition-colors duration-0" />
+                        
+                        <div id="searchSuggestions" class="hidden absolute top-full left-0 right-0 mt-2 bg-white border-2 border-ink shadow-[4px_4px_0_0_#0b0b0b] z-30 flex flex-col"></div>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Difficulty</label>
+                        <select id="filterDifficulty" class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan cursor-pointer appearance-none rounded-none focus:bg-ink focus:text-cyan transition-colors duration-0">
+                            <option value="all">ALL</option>
+                            <option value="easy">EASY</option>
+                            <option value="medium">MEDIUM</option>
+                            <option value="hard">HARD</option>
+                        </select>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Category</label>
+                        <select id="filterCategory" class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan cursor-pointer appearance-none rounded-none focus:bg-ink focus:text-cyan transition-colors duration-0">
+                            <option value="all">ALL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="loading-practice" class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
+                    <p class="font-mono text-sm font-bold uppercase tracking-widest text-ink animate-pulse">> Booting up mainframe...</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="practice-challenges-grid"></div>
+            </div>
+        </div>
+
+        <div id="section-compete" class="hidden">
+            <div class="mb-10">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-danger text-white inline-block px-2 border-2 border-ink">SYS // ACTIVE OPERATIONS</p>
+                <h1 class="text-5xl sm:text-7xl font-black text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
+                    Live Network<span class="inline-block w-4 h-[0.8em] bg-danger animate-pulse align-middle ml-2 border-2 border-ink"></span>
+                </h1>
+            </div>
+
+            <div class="flex gap-6 mb-8 border-b-2 border-ink font-mono text-sm font-bold uppercase tracking-widest">
+                <a href="/compete/events" data-nav id="subnav-compete-events" class="text-ink border-b-4 border-ink pb-3 transition-colors duration-0 block">Events</a>
+                <a href="/compete/challenges" data-nav id="subnav-compete-challenges" class="text-gray-400 hover:text-ink border-b-4 border-transparent pb-3 transition-colors duration-0 block">Challenges</a>
+            </div>
+            
+            <div id="compete-view-events">
+                <div id="compete-events-list">
+                    <div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
+                        <p class="font-mono text-sm font-bold uppercase tracking-widest text-ink animate-pulse">> Waiting for uplink...</p>
+                    </div>
+                </div>
+
+                <div id="compete-event-dashboard" class="hidden">
+                    <button onclick="window.showEventsList()" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-4 py-2 hover:bg-ink hover:text-white transition-colors duration-0 mb-6 shadow-[2px_2px_0_0_#0b0b0b]">
+                        [←] Back to Events
+                    </button>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-2 border-ink bg-white p-6 shadow-[4px_4px_0_0_#0b0b0b]">
+                        <h2 id="compete-event-title" class="text-3xl font-black uppercase tracking-tight text-ink">Loading Event...</h2>
+                        <button onclick="window.showLeaderboard()" class="font-mono text-xs font-bold uppercase tracking-widest bg-cyan text-ink border-2 border-ink px-6 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                            > Leaderboard
+                        </button>
+                    </div>
+                    <div id="compete-event-challenges-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
+                
+                <div id="compete-leaderboard" class="hidden bg-white border-4 border-ink p-6 sm:p-10 shadow-[8px_8px_0_0_#0b0b0b]">
+                    <button onclick="window.hideLeaderboard()" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-4 py-2 hover:bg-ink hover:text-white transition-colors duration-0 mb-6 shadow-[2px_2px_0_0_#0b0b0b]">
+                        [←] Back to Challenges
+                    </button>
+                    <h2 class="text-4xl font-black uppercase text-ink border-b-4 border-ink pb-2 mb-6">Live Rankings</h2>
+                    <table class="w-full text-left border-collapse border-2 border-ink bg-white">
+                        <thead>
+                            <tr class="border-b-2 border-ink bg-canvas font-mono text-sm font-bold text-ink uppercase tracking-widest">
+                                <th class="p-4 border-r-2 border-ink">Rank</th>
+                                <th class="p-4 border-r-2 border-ink">Hacker</th>
+                                <th class="p-4 text-right">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-content" class="text-sm font-mono"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="compete-view-challenges" class="hidden">
+                <div id="compete-independent-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </div>
+
+        <div id="detail-view" class="hidden bg-white border-4 border-ink shadow-[12px_12px_0_0_#5ce1e6] p-0 max-w-4xl mx-auto absolute top-0 left-6 right-6 z-20">
+            <div class="bg-ink text-cyan p-4 font-mono font-bold flex justify-between items-center border-b-4 border-ink">
+                <span class="uppercase tracking-widest">> SYSTEM_OVERRIDE_ACTIVE</span>
+                <button onclick="window.history.back()" class="text-cyan hover:bg-cyan hover:text-ink px-2 py-1 transition-colors duration-0 border border-transparent hover:border-ink uppercase">
+                    [X] Terminate
+                </button>
+            </div>
+            
+            <div class="p-6 sm:p-10">
+                <h1 id="det-title" class="text-4xl sm:text-5xl font-black text-ink uppercase tracking-tighter mb-6 border-b-2 border-ink pb-2">Loading...</h1>
+                
+                <div class="flex flex-wrap gap-4 font-mono text-xs font-bold uppercase mb-8 pb-6 border-b-2 border-ink">
+                    <span class="border-2 border-ink bg-canvas px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-cat"></span>
+                    <span class="border-2 border-ink bg-canvas px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-diff"></span>
+                    <span class="border-2 border-ink bg-black text-white px-3 py-1 shadow-[2px_2px_0_0_#5ce1e6]" id="det-author"></span>
+                    <span class="border-2 border-ink bg-danger text-white px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-points"></span>
+
+                    <span class="hidden border-2 border-ink bg-cyan text-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-solves"></span>
+            <span class="hidden border-2 border-ink bg-danger text-white px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]" id="det-firstblood"></span>
+                </div>
+                
+                <div id="det-desc" class="text-ink font-sans leading-relaxed mb-8 text-lg"></div>
+                <div id="det-assets" class="flex flex-wrap gap-4 mb-8"></div>
+                <div id="det-hints" class="space-y-4 mb-8"></div>
+
+                <div class="border-2 border-ink bg-canvas p-6 mt-8 shadow-[4px_4px_0_0_#0b0b0b]">
+                    <label class="font-mono text-xs font-bold uppercase mb-2 block">> Enter Flag</label>
+                    
+                    <div id="submission-container" class="flex flex-col sm:flex-row gap-4">
+                        
+                        <input type="text" id="flagInput" placeholder="FLAG" class="border-2 border-ink bg-white p-3 font-mono text-sm rounded-none focus:outline-none focus:ring-0 focus:border-cyan focus:bg-ink focus:text-cyan transition-colors duration-75 flex-1 shadow-[inset_2px_2px_0_0_#e5e5e5]">
+                        <button id="submitFlagBtn" class="font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                            Execute
+                        </button>
+                        
+                        <button id="connectWalletBtn" class="hidden font-mono uppercase tracking-widest font-bold bg-ink text-white border-2 border-ink px-8 py-3 hover:bg-cyan hover:text-ink transition-all flex-1 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none duration-75">
+                            Connect MetaMask
+                        </button>
+                        <button id="validateWeb3Btn" class="hidden font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                            Validate on Blockchain
+                        </button>
+                        
+                    </div>
+                    
+                    <div id="flagStatus" class="mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module" src="/js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js" integrity="sha256-qV4Cjl79anQT0dGNbZ+Rj9rRnivm6WL8uqEKsbNkclw=" crossorigin="anonymous"></script>
+</body>
+</html>
