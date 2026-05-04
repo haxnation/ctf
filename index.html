@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HaxNation — CTF Platform</title>
+    <!-- The required tag to fix the Lighthouse audit -->
+    <meta name="description" content="HaxNation CTF Platform. Practice your cybersecurity skills, compete in live operations, and climb the leaderboard.">
+    
+    <!-- Bonus: Open Graph tags for beautiful Discord/Twitter link previews -->
+    <meta property="og:title" content="HaxNation | CTF Platform">
+    <meta property="og:description" content="Practice your cybersecurity skills, compete in live operations, and climb the leaderboard.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ctf.haxnation.org/">
+    <!-- Optional: Add an absolute URL to a banner image for social previews -->
+    <meta property="og:image" content="https://haxnation.org/images/logo.png">
+    <meta name="theme-color" content="#5ce1e6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -92,13 +103,13 @@
                 
                 <div class="mb-8 bg-white border-2 border-ink p-4 shadow-[4px_4px_0_0_#0b0b0b] flex flex-col md:flex-row gap-4">
                     <div class="flex-1 relative">
-                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Query_String</label>
+                        <label for="searchBar" class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Query_String</label>
                         <input type="text" id="searchBar" autocomplete="off" placeholder="Search targets..." class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan focus:bg-ink focus:text-cyan transition-colors duration-0" />
                         
                         <div id="searchSuggestions" class="hidden absolute top-full left-0 right-0 mt-2 bg-white border-2 border-ink shadow-[4px_4px_0_0_#0b0b0b] z-30 flex flex-col"></div>
                     </div>
                     <div class="w-full md:w-48">
-                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Difficulty</label>
+                        <label for="filterDifficulty" class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Difficulty</label>
                         <select id="filterDifficulty" class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan cursor-pointer appearance-none rounded-none focus:bg-ink focus:text-cyan transition-colors duration-0">
                             <option value="all">ALL</option>
                             <option value="easy">EASY</option>
@@ -107,7 +118,7 @@
                         </select>
                     </div>
                     <div class="w-full md:w-48">
-                        <label class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Category</label>
+                        <label for="filterCategory" class="font-mono text-[10px] font-bold uppercase mb-1 block text-ink">> Category</label>
                         <select id="filterCategory" class="border-2 border-ink bg-canvas p-2.5 font-mono text-sm w-full focus:outline-none focus:border-cyan cursor-pointer appearance-none rounded-none focus:bg-ink focus:text-cyan transition-colors duration-0">
                             <option value="all">ALL</option>
                         </select>
@@ -203,7 +214,7 @@
                 <div id="det-hints" class="space-y-4 mb-8"></div>
 
                 <div class="border-2 border-ink bg-canvas p-6 mt-8 shadow-[4px_4px_0_0_#0b0b0b]">
-                    <label class="font-mono text-xs font-bold uppercase mb-2 block">> Enter Flag</label>
+                    <label for="flagInput" class="font-mono text-xs font-bold uppercase mb-2 block">> Enter Flag</label>
                     
                     <div id="submission-container" class="flex flex-col sm:flex-row gap-4">
                         
