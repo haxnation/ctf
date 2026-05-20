@@ -27,7 +27,32 @@ const appHandlers = {
 
 window.router = createRouter(appHandlers);
 
-document.addEventListener('DOMContentLoaded', async () => {
+// ==========================================
+// SKELETON LOADER
+// ==========================================
+
+function injectSkeletonCards(count = 9) {
+    const loadingEl = document.getElementById('loading-practice');
+    if (!loadingEl) return;
+    loadingEl.innerHTML = Array.from({ length: count }).map(() => `
+        <div class="border-2 border-ink bg-white p-5 shadow-[4px_4px_0_0_#0b0b0b] flex flex-col gap-3 pointer-events-none">
+            <div class="flex justify-between items-start pb-2 border-b-2 border-ink gap-3">
+                <div class="skeleton h-6 rounded-none flex-1 border border-gray-300"></div>
+                <div class="skeleton h-6 w-16 rounded-none border border-gray-300 flex-shrink-0"></div>
+            </div>
+            <div class="flex gap-2 mt-1">
+                <div class="skeleton h-5 w-20 rounded-none border border-gray-300"></div>
+                <div class="skeleton h-5 w-16 rounded-none border border-gray-300"></div>
+            </div>
+            <div class="mt-auto pt-3 border-t-2 border-ink">
+                <div class="skeleton h-4 w-32 rounded-none border border-gray-300"></div>
+            </div>
+        </div>
+    `).join('');
+    loadingEl.classList.remove('hidden');
+}
+
+
     window.login = login;
     window.toggleHint = toggleHint;
     window.showEventsList = showEventsList;
@@ -35,6 +60,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.showLeaderboard = showLeaderboard;
     window.hideLeaderboard = hideLeaderboard;
     window.selectSuggestion = selectSuggestion;
+
+    // Inject skeleton cards immediately so the UI feels instant
+    injectSkeletonCards(9);
 
     setupListeners();
     await checkAuth();
@@ -438,7 +466,6 @@ function switchPracticeView(view) {
     document.getElementById(`practice-view-${view}`).classList.remove('hidden');
 
     if (view === 'challenges') {
-        document.getElementById('loading-practice').classList.add('hidden');
         applyFilters(); 
     }
 }
@@ -589,47 +616,68 @@ async function openEvent(eventId, eventName) {
 
 async function renderPracticeGrid(data) {
     const grid = document.getElementById('practice-challenges-grid');
+    const loadingEl = document.getElementById('loading-practice');
+
     if (data.length === 0) {
+        if (loadingEl) loadingEl.classList.add('hidden');
         grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-ink">> NO TARGETS FOUND</p></div>`;
         return;
     }
 
-    // 1. Fetch solved IDs from Cache (Instant & 0 DB cost)
-    const solvedIds = await getPracticeSolves();
+    // --- PASS 1: Render cards instantly using only cached solve data (no network) ---
+    const cachedRaw = localStorage.getItem('practice_solves_data');
+    const cachedSolves = (cachedRaw ? JSON.parse(cachedRaw).solves : null) || [];
 
-    grid.innerHTML = data.map(chal => {
-        const isSolved = solvedIds.includes(chal.id);
-        
-        let diffColorClass = 'bg-canvas text-ink';
-        if(chal.difficulty === 'Easy') diffColorClass = 'bg-cyan text-ink';
-        if(chal.difficulty === 'Medium') diffColorClass = 'bg-ink text-white';
-        if(chal.difficulty === 'Hard') diffColorClass = 'bg-danger text-white';
+    grid.innerHTML = data.map(chal => renderPracticeCard(chal, cachedSolves)).join('');
+    if (loadingEl) loadingEl.classList.add('hidden');
 
-        const safeName = DOMPurify.sanitize(chal.name || '');
-        const safeDiff = DOMPurify.sanitize(chal.difficulty || '');
-        const safeCat = DOMPurify.sanitize(Array.isArray(chal.category) ? chal.category.join(', ') : (chal.category || ''));
-        const safeAuthors = DOMPurify.sanitize(chal.authors && chal.authors.length > 0 ? chal.authors.join(', ') : 'UNKNOWN_AUTHOR');
+    // --- PASS 2: If user is logged in, silently reconcile solve status in the background ---
+    if (state.currentUser) {
+        getPracticeSolves().then(freshSolves => {
+            // Only re-render if the solved set actually changed
+            const cachedSet = new Set(cachedSolves);
+            const freshSet = new Set(freshSolves);
+            const changed = freshSolves.some(id => !cachedSet.has(id)) || cachedSolves.some(id => !freshSet.has(id));
+            if (changed) {
+                grid.innerHTML = data.map(chal => renderPracticeCard(chal, freshSolves)).join('');
+            }
+        });
+    }
+}
 
-        // 2. Adjust styling if solved
-        let cardBgClass = isSolved ? 'bg-cyan' : 'bg-white';
-        let solvedBadge = isSolved 
-            ? `<span class="font-mono text-[12px] font-bold uppercase border-2 border-ink bg-white text-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b]">SOLVED</span>`
-            : '';
+function renderPracticeCard(chal, solvedIds) {
+    const isSolved = solvedIds.includes(chal.id);
 
-        return `
-        <a href="/challenge/practice/${chal.id}" data-nav class="border-2 border-ink ${cardBgClass} p-5 rounded-none shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] hover:bg-ink hover:text-white transition-all duration-75 flex flex-col cursor-pointer group block text-left">
-            <div class="flex justify-between items-start mb-4 border-b-2 border-ink group-hover:border-white pb-2">
-                <h3 class="font-black text-xl uppercase tracking-tighter truncate">${safeName}</h3>
-                ${solvedBadge}
-            </div>
-            <div class="flex flex-wrap gap-2 mb-6">
-                <span class="border-2 border-ink px-2 py-1 font-mono text-[10px] font-bold uppercase shadow-[2px_2px_0_0_#0b0b0b] group-hover:border-white ${diffColorClass}">${safeDiff}</span>
-                <span class="border-2 border-ink bg-white text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">${safeCat}</span>
-            </div>
-            <div class="mt-auto pt-4 border-t-2 border-ink group-hover:border-white">
-                <p class="font-mono text-[10px] font-bold uppercase truncate">> ${safeAuthors}</p>
-            </div>
-        </a>`;
+    let diffColorClass = 'bg-canvas text-ink';
+    if(chal.difficulty === 'Easy') diffColorClass = 'bg-cyan text-ink';
+    if(chal.difficulty === 'Medium') diffColorClass = 'bg-ink text-white';
+    if(chal.difficulty === 'Hard') diffColorClass = 'bg-danger text-white';
+
+    const safeName = DOMPurify.sanitize(chal.name || '');
+    const safeDiff = DOMPurify.sanitize(chal.difficulty || '');
+    const safeCat = DOMPurify.sanitize(Array.isArray(chal.category) ? chal.category.join(', ') : (chal.category || ''));
+    const safeAuthors = DOMPurify.sanitize(chal.authors && chal.authors.length > 0 ? chal.authors.join(', ') : 'UNKNOWN_AUTHOR');
+
+    let cardBgClass = isSolved ? 'bg-cyan' : 'bg-white';
+    let solvedBadge = isSolved
+        ? `<span class="font-mono text-[12px] font-bold uppercase border-2 border-ink bg-white text-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b]">SOLVED</span>`
+        : '';
+
+    return `
+    <a href="/challenge/practice/${chal.id}" data-nav class="border-2 border-ink ${cardBgClass} p-5 rounded-none shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] hover:bg-ink hover:text-white transition-all duration-75 flex flex-col cursor-pointer group block text-left">
+        <div class="flex justify-between items-start mb-4 border-b-2 border-ink group-hover:border-white pb-2">
+            <h3 class="font-black text-xl uppercase tracking-tighter truncate">${safeName}</h3>
+            ${solvedBadge}
+        </div>
+        <div class="flex flex-wrap gap-2 mb-6">
+            <span class="border-2 border-ink px-2 py-1 font-mono text-[10px] font-bold uppercase shadow-[2px_2px_0_0_#0b0b0b] group-hover:border-white ${diffColorClass}">${safeDiff}</span>
+            <span class="border-2 border-ink bg-white text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">${safeCat}</span>
+        </div>
+        <div class="mt-auto pt-4 border-t-2 border-ink group-hover:border-white">
+            <p class="font-mono text-[10px] font-bold uppercase truncate">> ${safeAuthors}</p>
+        </div>
+    </a>`;
+}
     }).join('');
 }
 
