@@ -53,6 +53,8 @@ export function createRouter(appHandlers) {
                 appHandlers.setActiveEventId(eventId);
                 appHandlers.openChallenge(id, 'compete-event');
             }
+        } else {
+            appHandlers.show404();
         }
     };
 

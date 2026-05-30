@@ -60,19 +60,6 @@
             .label {
                 @apply font-mono text-[10px] font-bold uppercase mb-1 block text-ink;
             }
-            .skeleton {
-                @apply bg-gray-200 relative overflow-hidden;
-            }
-            .skeleton::after {
-                content: '';
-                @apply absolute inset-0;
-                background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
-                animation: shimmer 1.4s infinite;
-            }
-            @keyframes shimmer {
-                0% { transform: translateX(-100%); }
-                100% { transform: translateX(100%); }
-            }
         }
     </style>
 </head>
@@ -83,11 +70,17 @@
     <nav class="sticky top-0 z-50 border-b-2 border-ink bg-white">
     <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
         <a href="/practice/challenges" data-nav class="flex items-center gap-3 group cursor-pointer block">
-            <span class="w-3 h-3 bg-danger border-2 border-ink"></span>
+            <div class="relative group/status flex items-center gap-2">
+                <span class="w-3 h-3 bg-danger border-2 border-ink block"></span>
+                <span class="font-mono text-[10px] font-bold text-ink block sm:hidden sm:absolute sm:top-full sm:left-1/2 sm:-translate-x-1/2 sm:mt-2 sm:bg-ink sm:text-white sm:px-2 sm:py-1 sm:opacity-0 sm:group-hover/status:opacity-100 sm:transition-opacity sm:pointer-events-none sm:whitespace-nowrap sm:z-50">STATUS_OFFLINE</span>
+            </div>
             
-            <span class="flex items-center bg-ink border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b] group-hover:translate-x-[1px] group-hover:translate-y-[1px] group-hover:shadow-[1px_1px_0_0_#0b0b0b] transition-all duration-75">
-                <img src="https://haxnation.org/images/logo_wt.png" alt="HAXNATION" class="h-8 w-auto block object-contain">
-            </span>
+            <div class="relative group/logo flex items-center gap-2">
+                <span class="flex items-center bg-ink border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b] group-hover:translate-x-[1px] group-hover:translate-y-[1px] group-hover:shadow-[1px_1px_0_0_#0b0b0b] transition-all duration-75 block">
+                    <img src="https://haxnation.org/images/logo_wt.png" alt="HAXNATION" class="h-8 w-auto block object-contain">
+                </span>
+                <span class="font-mono text-[10px] font-bold text-ink block sm:hidden sm:absolute sm:top-full sm:left-1/2 sm:-translate-x-1/2 sm:mt-2 sm:bg-ink sm:text-white sm:px-2 sm:py-1 sm:opacity-0 sm:group-hover/logo:opacity-100 sm:transition-opacity sm:pointer-events-none sm:whitespace-nowrap sm:z-50">MAIN_DASHBOARD</span>
+            </div>
 
             <span class="hidden sm:inline font-mono text-[10px] font-bold uppercase tracking-widest text-ink border-2 border-ink px-1.5 py-0.5 bg-canvas">CTF_SYS</span>
         </a>
@@ -103,11 +96,12 @@
             </button>
 
             <div id="user-info" class="hidden flex items-center gap-4">
-                <div class="flex items-center gap-2 bg-white border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b]">
+                <div class="flex items-center gap-2 bg-white border-2 border-ink px-3 py-1 shadow-[2px_2px_0_0_#0b0b0b] group/avatar relative">
                     <div class="w-6 h-6 bg-cyan border-2 border-ink flex items-center justify-center">
                         <span class="font-mono text-[10px] font-bold text-ink" id="user-avatar-initials">U</span>
                     </div>
                     <span id="user-name" class="hidden sm:inline font-mono text-xs font-bold text-ink uppercase"></span>
+                    <span class="font-mono text-[10px] font-bold text-ink block sm:hidden sm:absolute sm:top-full sm:left-1/2 sm:-translate-x-1/2 sm:mt-2 sm:bg-ink sm:text-white sm:px-2 sm:py-1 sm:opacity-0 sm:group-hover/avatar:opacity-100 sm:transition-opacity sm:pointer-events-none sm:whitespace-nowrap sm:z-50">USER_PROFILE</span>
                 </div>
                 <button id="logout-btn" class="font-mono text-xs font-bold uppercase tracking-widest bg-white text-ink border-2 border-ink px-3 py-2 hover:bg-ink hover:text-white transition-colors duration-0">Exit</button>
             </div>
@@ -132,7 +126,10 @@
 
             <div id="practice-view-events" class="hidden bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center">
                 <p class="text-ink font-mono text-lg font-bold uppercase tracking-widest bg-danger text-white inline-block px-4 py-2 border-2 border-ink mb-4 shadow-[4px_4px_0_0_#0b0b0b]">ARCHIVE_OFFLINE</p>
-                <p class="text-ink font-mono text-sm">Historical operations are currently unavailable.</p>
+                <p class="text-ink font-mono text-sm mb-6">Historical operations are currently unavailable. The system is functioning normally, but no past events are indexed.</p>
+                <button onclick="window.router.handlers.switchPracticeView('challenges')" class="font-mono text-xs font-bold uppercase tracking-widest bg-cyan text-ink border-2 border-ink px-6 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75">
+                    > Back to Challenges
+                </button>
             </div>
 
             <div id="practice-view-challenges">
@@ -250,7 +247,10 @@
                 <div id="det-hints" class="space-y-4 mb-8"></div>
 
                 <div class="border-2 border-ink bg-canvas p-6 mt-8 shadow-[4px_4px_0_0_#0b0b0b]">
-                    <label for="flagInput" class="font-mono text-xs font-bold uppercase mb-2 block">> Enter Flag</label>
+                    <div class="flex justify-between items-end mb-2">
+                        <label for="flagInput" class="font-mono text-xs font-bold uppercase block">> Enter Flag <span class="text-danger">*</span></label>
+                        <span id="flagCharCount" class="font-mono text-[10px] text-gray-500 hidden">0/100</span>
+                    </div>
                     
                     <div id="submission-container" class="flex flex-col sm:flex-row gap-4">
                         
@@ -273,42 +273,37 @@
             </div>
         </div>
 
+        <section id="section-404" class="hidden flex flex-col items-center justify-center min-h-[50vh] text-center">
+            <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-4 bg-danger text-white inline-block px-3 py-1 border-2 border-ink">SYS // ERROR 404</p>
+            <h1 class="text-6xl sm:text-9xl font-black text-ink uppercase tracking-tighter leading-none mb-6">NOT FOUND</h1>
+            <div class="max-w-2xl bg-white border-4 border-ink p-10 shadow-[8px_8px_0_0_#0b0b0b] mb-10">
+                <h2 class="text-2xl font-bold uppercase mb-4 text-ink">> INVALID_DIRECTORY</h2>
+                <p class="font-mono text-sm text-ink mb-6">The sector you are attempting to access does not exist in our current database. This is a client-side routing fault.</p>
+                <p class="font-mono text-sm text-ink mb-8 font-bold">Recommended action: Return to the active operations or practice arena.</p>
+                <a href="/practice/challenges" data-nav class="font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-4 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75 inline-block">
+                    Initiate Redirect
+                </a>
+            </div>
+        </section>
+
     </main>
 
     <script type="module" src="/js/app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js" integrity="sha256-qV4Cjl79anQT0dGNbZ+Rj9rRnivm6WL8uqEKsbNkclw=" crossorigin="anonymous"></script>
 
-    <!-- Global Interaction Loader -->
-    <div id="global-loader" class="fixed top-0 left-0 w-full h-1 bg-transparent z-[9999] pointer-events-none hidden">
-        <div class="h-full bg-cyan animate-[pulse_1s_ease-in-out_infinite] w-1/3 relative left-0 transition-all duration-300 shadow-[0_0_8px_theme('colors.cyan')]"></div>
+    <!-- Global UI Containers -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+    
+    <div id="modal-container" class="fixed inset-0 z-[10000] hidden items-center justify-center p-6 bg-ink/80 backdrop-blur-sm">
+        <div id="modal-content" class="bg-white border-4 border-ink shadow-[12px_12px_0_0_#5ce1e6] p-8 max-w-lg w-full transform scale-95 opacity-0 transition-all duration-200">
+            <!-- Injected dynamically -->
+        </div>
     </div>
-    <script>
-        document.addEventListener('click', (e) => {
-            const el = e.target.closest('button, a');
-            if (el) {
-                const loader = document.getElementById('global-loader');
-                if (loader) {
-                    loader.classList.remove('hidden');
-                    
-                    // Simple animation for the progress bar
-                    const bar = loader.firstElementChild;
-                    bar.style.left = '0%';
-                    let pos = 0;
-                    const interval = setInterval(() => {
-                        pos += 5;
-                        if(pos > 100) pos = -30;
-                        bar.style.left = pos + '%';
-                    }, 50);
 
-                    // Auto-hide after 2 seconds if router doesn't hide it (fallback)
-                    setTimeout(() => {
-                        clearInterval(interval);
-                        loader.classList.add('hidden');
-                    }, 2000);
-                }
-            }
-        });
-    </script>
+    <!-- Global Progress Bar -->
+    <div id="global-progress-bar" class="fixed top-0 left-0 w-full h-1 bg-transparent z-[9999] pointer-events-none hidden">
+        <div class="h-full bg-cyan w-0 transition-all duration-300 shadow-[0_0_8px_theme('colors.cyan')]"></div>
+    </div>
 
 </body>
 </html>
