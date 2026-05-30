@@ -22,10 +22,56 @@ const appHandlers = {
     closeChallengeUI: () => document.getElementById('detail-view').classList.add('hidden'),
     ensureDataLoaded: async () => {
         if (!dataLoaded) await fetchStaticData();
+    },
+    show404: () => {
+        document.getElementById('section-practice')?.classList.add('hidden');
+        document.getElementById('section-compete')?.classList.add('hidden');
+        document.getElementById('section-404')?.classList.remove('hidden');
     }
 };
 
 window.router = createRouter(appHandlers);
+
+// ==========================================
+// UX UI HANDLERS
+// ==========================================
+window.showToast = function(type, message) {
+    const container = document.getElementById('toast-container');
+    if(!container) return;
+    const toast = document.createElement('div');
+    const bgClass = type === 'success' ? 'bg-success text-ink' : 'bg-danger text-white';
+    toast.className = `font-mono text-sm font-bold uppercase tracking-widest ${bgClass} px-4 py-3 border-2 border-ink shadow-[4px_4px_0_0_#0b0b0b] transition-all duration-300 opacity-0 translate-y-4`;
+    toast.innerHTML = type === 'success' ? `> ✓ ${DOMPurify.sanitize(message)}` : `> ! ${DOMPurify.sanitize(message)}`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-4'));
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
+
+window.showModal = function(type, title, message, btnText, onConfirm) {
+    const container = document.getElementById('modal-container');
+    const content = document.getElementById('modal-content');
+    if(!container || !content) return;
+    const bgClass = type === 'success' ? 'bg-success text-ink' : 'bg-danger text-white';
+    content.innerHTML = `
+        <h3 class="text-3xl font-black uppercase mb-4">${DOMPurify.sanitize(title)}</h3>
+        <p class="font-mono text-sm mb-8">${DOMPurify.sanitize(message)}</p>
+        <button id="modal-action-btn" class="font-mono uppercase tracking-widest font-bold ${bgClass} border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75 w-full">
+            ${DOMPurify.sanitize(btnText)}
+        </button>
+    `;
+    container.classList.remove('hidden'); container.classList.add('flex');
+    requestAnimationFrame(() => content.classList.remove('scale-95', 'opacity-0'));
+    document.getElementById('modal-action-btn').addEventListener('click', () => {
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            container.classList.add('hidden'); container.classList.remove('flex');
+            if(onConfirm) onConfirm();
+        }, 200);
+    });
+};
 
 // ==========================================
 // SKELETON LOADER
@@ -37,15 +83,15 @@ function injectSkeletonCards(count = 9) {
     loadingEl.innerHTML = Array.from({ length: count }).map(() => `
         <div class="border-2 border-ink bg-white p-5 shadow-[4px_4px_0_0_#0b0b0b] flex flex-col gap-3 pointer-events-none">
             <div class="flex justify-between items-start pb-2 border-b-2 border-ink gap-3">
-                <div class="skeleton h-6 rounded-none flex-1 border border-gray-300"></div>
-                <div class="skeleton h-6 w-16 rounded-none border border-gray-300 flex-shrink-0"></div>
+                <div class="animate-pulse bg-gray-200 h-6 rounded-none flex-1 border border-gray-300"></div>
+                <div class="animate-pulse bg-gray-200 h-6 w-16 rounded-none border border-gray-300 flex-shrink-0"></div>
             </div>
             <div class="flex gap-2 mt-1">
-                <div class="skeleton h-5 w-20 rounded-none border border-gray-300"></div>
-                <div class="skeleton h-5 w-16 rounded-none border border-gray-300"></div>
+                <div class="animate-pulse bg-gray-200 h-5 w-20 rounded-none border border-gray-300"></div>
+                <div class="animate-pulse bg-gray-200 h-5 w-16 rounded-none border border-gray-300"></div>
             </div>
             <div class="mt-auto pt-3 border-t-2 border-ink">
-                <div class="skeleton h-4 w-32 rounded-none border border-gray-300"></div>
+                <div class="animate-pulse bg-gray-200 h-4 w-32 rounded-none border border-gray-300"></div>
             </div>
         </div>
     `).join('');
@@ -210,7 +256,18 @@ function handleSearchInput(e) {
             }).join('');
             suggestionsBox.classList.remove('hidden');
         } else {
-            suggestionsBox.classList.add('hidden');
+            suggestionsBox.innerHTML = `
+                <div class="p-4 bg-canvas text-center border-b-2 border-ink">
+                    <p class="font-mono text-xs font-bold uppercase text-danger mb-2">> 0 MATCHES FOUND</p>
+                    <p class="font-sans text-sm text-ink mb-2">Try related terms to find targets:</p>
+                    <div class="flex gap-2 justify-center">
+                        <button onclick="document.getElementById('searchBar').value='Web'; window.applyFilters();" class="font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Web</button>
+                        <button onclick="document.getElementById('searchBar').value='Crypto'; window.applyFilters();" class="font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Crypto</button>
+                        <button onclick="document.getElementById('searchBar').value='Pwn'; window.applyFilters();" class="font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Pwn</button>
+                    </div>
+                </div>
+            `;
+            suggestionsBox.classList.remove('hidden');
         }
     } else {
         suggestionsBox.classList.add('hidden');
@@ -241,6 +298,49 @@ function setupListeners() {
             document.getElementById('searchSuggestions')?.classList.add('hidden');
         }
     });
+
+    const flagInput = document.getElementById('flagInput');
+    const submitBtn = document.getElementById('submitFlagBtn');
+    const charCount = document.getElementById('flagCharCount');
+    
+    if (flagInput && submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        
+        flagInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (charCount) {
+                if (val.length >= 50) {
+                    charCount.classList.remove('hidden');
+                    charCount.innerText = `${val.length}/100`;
+                } else {
+                    charCount.classList.add('hidden');
+                }
+            }
+            if (val.trim().length > 0) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+        
+        flagInput.addEventListener('blur', (e) => {
+            const val = e.target.value.trim();
+            if (val.length === 0 && e.target.classList.contains('interacted')) {
+                e.target.classList.add('border-danger');
+                e.target.classList.remove('border-ink');
+            } else {
+                e.target.classList.remove('border-danger');
+                e.target.classList.add('border-ink');
+            }
+        });
+        
+        flagInput.addEventListener('focus', (e) => {
+            e.target.classList.add('interacted');
+        });
+    }
 
     // ==========================================
     // STANDARD CTF FLAG SUBMISSION
@@ -284,24 +384,24 @@ function setupListeners() {
                                     }
                                 }
                             }
-                            statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
-                            statusEl.innerText = "> SYSTEM: FLAG_VERIFIED & RECORDED";
+                            statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-success inline-block px-2 border-2 border-ink';
+                            statusEl.innerText = "> ✓ VERIFIED & RECORDED";
                             applyFilters(); 
                         } else {
                             statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                            statusEl.innerText = `> ERR: ${data.error || 'RECORD_FAILED'}`;
+                            statusEl.innerText = `> ERR: SYSTEM FAULT. VERIFICATION FAILED. RETRY LATER.`;
                         }
                     } catch (err) {
                         statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                        statusEl.innerText = "> ERR: NETWORK_ANOMALY WHILE RECORDING";
+                        statusEl.innerText = "> ERR: NETWORK FAULT. CHECK CONNECTION. RETRY LATER.";
                     }
                 } else {
-                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
-                    statusEl.innerText = "> SYSTEM: FLAG_VERIFIED (NOT RECORDED - LOGIN REQ)";
+                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-success inline-block px-2 border-2 border-ink';
+                    statusEl.innerText = "> ✓ VERIFIED (LOGIN REQ TO RECORD)";
                 }
             } else {
                 statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                statusEl.innerText = "> ERR: HASH_MISMATCH";
+                statusEl.innerText = "> ERR: CLIENT FAULT. HASH MISMATCH.";
             }
             btn.innerText = origTxt;
             btn.disabled = false;
@@ -324,17 +424,17 @@ function setupListeners() {
                 const data = await res.json();
                 
                 if (data.success) {
-                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-cyan inline-block px-2 border-2 border-ink';
-                    statusEl.innerText = `> SUCCESS: +${data.points} PTS`;
+                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-success inline-block px-2 border-2 border-ink';
+                    statusEl.innerText = `> ✓ SUCCESS: +${data.points} PTS`;
                 } else {
                     statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                    statusEl.innerText = `> ERR: ${data.error || data.message || 'VERIFICATION_FAILED'}`;
+                    statusEl.innerText = `> ERR: SYSTEM FAULT. VERIFICATION FAILED. RETRY LATER.`;
                 }
                 btn.innerText = origTxt;
                 btn.disabled = false;
             } catch (err) {
                 statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                statusEl.innerText = "> ERR: NETWORK_ANOMALY";
+                statusEl.innerText = "> ERR: NETWORK FAULT. CHECK CONNECTION. RETRY LATER.";
             }
             btn.innerText = origTxt;
             btn.disabled = false;
@@ -542,7 +642,11 @@ async function loadLiveEvents() {
             eventsList.innerHTML = `<div class="bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center"><p class="font-mono text-lg font-bold uppercase tracking-widest text-ink">> NO ACTIVE OPERATIONS</p></div>`;
         }
     } catch (err) {
-        eventsList.innerHTML = `<div class="bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center"><p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink">> CONNECTION_LOST</p></div>`;
+        eventsList.innerHTML = `<div class="bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center">
+            <p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-4">> ERROR: COULD NOT LOAD OPERATIONS</p>
+            <p class="font-mono text-sm text-ink mb-4">The connection to the command server was interrupted.</p>
+            <button onclick="window.showEventsList()" class="font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Connection</button>
+        </div>`;
     }
 }
 
@@ -569,7 +673,11 @@ async function loadIndependentChallenges() {
         window.currentChallengesList = data.challenges; 
         grid.innerHTML = data.challenges.map(chal => renderCompeteCard(chal, data.solved, 'compete-independent')).join('');
     } catch (err) {
-        grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink">> SYSTEM_ERR</p></div>`;
+        grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
+            <p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-4">> ERROR: OPERATION UNAVAILABLE</p>
+            <p class="font-mono text-sm text-ink mb-4">A network error prevented the operation data from loading.</p>
+            <button onclick="window.openEvent('${eventId}', '${eventName}')" class="font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Operation</button>
+        </div>`;
     }
 }
 
@@ -870,7 +978,8 @@ async function openChallenge(id, mode) {
             hintsDiv.innerHTML = '';
         }
     } catch (error) {
-        document.getElementById('det-title').innerText = "FATAL ERROR LOADING TARGET.";
+        document.getElementById('det-title').innerText = "ERROR LOADING TARGET";
+        document.getElementById('det-desc').innerHTML = `<p class="font-mono text-sm font-bold text-danger">The target data could not be retrieved due to a system fault.</p><p class="font-mono text-sm mt-4">Please return to the main arena and try again.</p>`;
     }
 }
 
