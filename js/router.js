@@ -1,5 +1,9 @@
 export function createRouter(appHandlers) {
     const navigate = (url) => {
+        if (url.startsWith('/soc-sim')) {
+            window.location.href = url;
+            return;
+        }
         if (window.location.pathname === url) return;
         window.history.pushState(null, null, url);
         handleRoute();
@@ -7,6 +11,13 @@ export function createRouter(appHandlers) {
 
     const handleRoute = async () => {
         const path = window.location.pathname;
+
+        if (path.startsWith('/soc-sim')) {
+            // If we somehow booted the main app on a /soc-sim route, 
+            // force a hard reload to let the web server serve the React app
+            window.location.replace(path);
+            return;
+        }
 
         if (path === '/' || path === '/practice') {
             navigate('/practice/challenges');
