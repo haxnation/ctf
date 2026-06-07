@@ -43,14 +43,25 @@ jobs:
           terser js/config.js -o js/config.js -c -m
           terser js/aws-intercept.js -o js/aws-intercept.js -c -m
 
+      - name: Build SOC Sim
+        working-directory: ./soc-sim-src
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble final artifact
+        run: |
+          mkdir _site
+          rsync -av --exclude='.git' --exclude='.github' --exclude='soc-sim-src' --exclude='_site' . _site/
+          mv soc-sim-src/dist _site/soc-sim
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload the entire repository (which now contains the minified files)
-          path: '.'
+          path: '_site'
 
   deploy:
     environment:
