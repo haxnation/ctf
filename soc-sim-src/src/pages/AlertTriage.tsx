@@ -147,30 +147,7 @@ function AlertFieldsPanel({ alert }: { alert: Alert & { _index: number } }) {
   )
 }
 
-function MitreSection({ alert }: { alert: Alert }) {
-  if (!alert.mitre_tactic && !alert.mitre_technique) return null
-  return (
-    <section>
-      <div className="flex items-center justify-between mb-4 border-b border-outline-variant pb-2">
-        <h2 className="font-label-caps text-label-caps text-primary tracking-tighter">// MITRE ATT&CK</h2>
-      </div>
-      <div className="flex flex-wrap gap-4">
-        {alert.mitre_tactic && (
-          <div className="flex-1 min-w-[180px] border border-outline-variant p-4 bg-surface-container-low">
-            <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">TACTIC</div>
-            <div className="font-headline-md text-headline-md text-primary uppercase">{alert.mitre_tactic}</div>
-          </div>
-        )}
-        {alert.mitre_technique && (
-          <div className="flex-1 min-w-[180px] border border-outline-variant p-4 bg-surface-container-low">
-            <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">TECHNIQUE</div>
-            <div className="font-headline-md text-headline-md text-primary uppercase">{alert.mitre_technique}</div>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
+
 
 
 
@@ -424,7 +401,7 @@ export default function AlertTriage() {
             <AlertFieldsPanel alert={alert} />
           </section>
 
-          <MitreSection alert={alert} />
+
 
 
         </div>

@@ -34,14 +34,14 @@ function SummaryPanel({ summary }: { summary: ScenarioSummary }) {
               const count = summary.bySeverity[sev] ?? 0
               const pct = Math.round((count / maxSev) * 100)
               return (
-                <div key={sev} className="flex-1 flex flex-col items-center gap-1">
+                <div key={sev} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
                   <div
                     className={`w-full opacity-80 border-t-2 ${SEV_BAR_COLORS[sev].replace('bg-', 'border-t-').replace('-500', '-400').replace('-400', '-400')}`}
                     style={{ height: `${Math.max(pct, 4)}%`, backgroundColor: undefined }}
                   >
                     <div className={`w-full h-full ${SEV_BAR_COLORS[sev]} opacity-80`} />
                   </div>
-                  <span className="text-[10px] font-bold">
+                  <span className="text-[10px] font-bold shrink-0">
                     {sev === 'informational' ? 'INFO' : sev.slice(0, 4).toUpperCase()}
                   </span>
                 </div>
@@ -77,26 +77,7 @@ function SummaryPanel({ summary }: { summary: ScenarioSummary }) {
         </div>
       </div>
 
-      {/* By tactic */}
-      {Object.keys(summary.byMitreTactic).length > 0 && (
-        <div>
-          <h3 className="font-label-caps text-label-caps text-on-surface-variant mb-4 flex items-center gap-2">
-            <span className="text-primary-container">//</span> BY TACTIC
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(summary.byMitreTactic)
-              .sort(([, a], [, b]) => b - a)
-              .map(([tactic, count]) => (
-                <div
-                  key={tactic}
-                  className="px-2 py-1 bg-surface-variant text-[10px] font-bold border-l-2 border-primary-container uppercase"
-                >
-                  {tactic} [{count}]
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
+
 
       {/* Status block */}
       <div className="mt-auto border border-primary-container/20 p-4 bg-primary-container/5">
@@ -159,17 +140,7 @@ function AlertTable({
               <option key={s} value={s}>{s.toUpperCase()}</option>
             ))}
           </select>
-          {/* Tactic filter */}
-          <select
-            value={filters.mitre_tactic}
-            onChange={e => onFilterChange('mitre_tactic', e.target.value)}
-            className="px-3 py-1 bg-surface-variant text-on-surface font-code-sm text-code-sm border-none focus:outline-none focus:ring-1 focus:ring-primary-container cursor-pointer"
-          >
-            <option value="">TACTIC: ALL</option>
-            {allTactics.map(t => (
-              <option key={t} value={t}>{t.toUpperCase()}</option>
-            ))}
-          </select>
+
         </div>
       </div>
 
