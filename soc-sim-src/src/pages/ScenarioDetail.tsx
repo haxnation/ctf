@@ -98,7 +98,6 @@ function AlertTable({
   filters,
   onFilterChange,
   allSources,
-  allTactics,
 }: {
   alerts: (Alert & { _index: number })[]
   scenarioId: string
