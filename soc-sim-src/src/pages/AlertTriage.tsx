@@ -1,0 +1,472 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { getAlert, getScenarioSummary, submitTriage } from '../api'
+import type { Alert, AlertSeverity, TriageResult, TriageVerdict } from '../types'
+import SeverityBadge from '../components/SeverityBadge'
+import TerminalLoader from '../components/TerminalLoader'
+import ErrorMessage from '../components/ErrorMessage'
+
+// Fields that carry no analyst-facing meaning
+const SKIP_FIELDS = new Set(['index', 'sourcetype', 'status', '_index', 'alert_name', 'alert_severity', 'source', 'host', '_time', 'mitre_tactic', 'mitre_technique'])
+
+interface VerdictOption {
+  value: TriageVerdict
+  label: string
+  hoverBorder: string
+  hoverBg: string
+  selectedBorder: string
+  selectedBg: string
+}
+
+const VERDICTS: VerdictOption[] = [
+  {
+    value: 'true_positive',
+    label: 'TRUE_POSITIVE',
+    hoverBorder:    'hover:border-primary-container',
+    hoverBg:        'hover:bg-primary-container/5',
+    selectedBorder: 'border-primary-container',
+    selectedBg:     'bg-primary-container/10',
+  },
+  {
+    value: 'false_positive',
+    label: 'FALSE_POSITIVE',
+    hoverBorder:    'hover:border-on-surface-variant',
+    hoverBg:        'hover:bg-surface-variant',
+    selectedBorder: 'border-on-surface-variant',
+    selectedBg:     'bg-surface-variant',
+  },
+  {
+    value: 'escalate',
+    label: 'ESCALATE',
+    hoverBorder:    'hover:border-error',
+    hoverBg:        'hover:bg-error/5',
+    selectedBorder: 'border-error',
+    selectedBg:     'bg-error/10',
+  },
+  {
+    value: 'needs_investigation',
+    label: 'INVESTIGATE',
+    hoverBorder:    'hover:border-tertiary-container',
+    hoverBg:        'hover:bg-tertiary-container/5',
+    selectedBorder: 'border-tertiary-container',
+    selectedBg:     'bg-tertiary-container/10',
+  },
+]
+
+function AlertFieldsPanel({ alert }: { alert: Alert & { _index: number } }) {
+  const [cmdExpanded, setCmdExpanded] = useState(false)
+
+  const displayFields = Object.entries(alert).filter(([key, val]) => {
+    if (SKIP_FIELDS.has(key)) return false
+    if (val === null || val === undefined || val === '') return false
+    if (key === 'mitre_technique' || key === 'mitre_tactic') return false
+    return true
+  })
+
+  return (
+    <div className="space-y-[1px] bg-outline-variant">
+      {displayFields.map(([key, val]) => {
+        const strVal = String(val)
+        const isCmdline = key === 'cmdline'
+
+        return (
+          <div key={key} className="grid grid-cols-3 bg-surface-container-lowest p-3 items-start">
+            <span className="font-code-sm text-code-sm text-on-surface-variant">{key}</span>
+            {isCmdline ? (
+              <div className="col-span-2 bg-black/40 p-3 border border-outline-variant">
+                <code className="font-code-sm text-code-sm text-primary-container break-all block">
+                  {cmdExpanded ? strVal : strVal.slice(0, 120)}
+                  {strVal.length > 120 && !cmdExpanded && '…'}
+                </code>
+                {strVal.length > 120 && (
+                  <button
+                    onClick={() => setCmdExpanded(x => !x)}
+                    className="mt-2 text-[10px] text-on-surface-variant hover:text-primary-container transition-colors"
+                  >
+                    {cmdExpanded ? '// COLLAPSE' : '// EXPAND FULL PAYLOAD'}
+                  </button>
+                )}
+                <div className="mt-2 text-[10px] text-on-surface-variant italic">// ENCODED PAYLOAD DETECTED</div>
+              </div>
+            ) : (
+              <span className="col-span-2 font-code-sm text-code-sm text-primary break-all">{strVal}</span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MitreSection({ alert }: { alert: Alert }) {
+  if (!alert.mitre_tactic && !alert.mitre_technique) return null
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4 border-b border-outline-variant pb-2">
+        <h2 className="font-label-caps text-label-caps text-primary tracking-tighter">// MITRE ATT&CK</h2>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {alert.mitre_tactic && (
+          <div className="flex-1 min-w-[180px] border border-outline-variant p-4 bg-surface-container-low">
+            <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">TACTIC</div>
+            <div className="font-headline-md text-headline-md text-primary uppercase">{alert.mitre_tactic}</div>
+          </div>
+        )}
+        {alert.mitre_technique && (
+          <div className="flex-1 min-w-[180px] border border-outline-variant p-4 bg-surface-container-low">
+            <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">TECHNIQUE</div>
+            <div className="font-headline-md text-headline-md text-primary uppercase">{alert.mitre_technique}</div>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ProcessLineage({ process, parent }: { process?: string; parent?: string }) {
+  if (!process && !parent) return null
+  const nodes = parent ? [parent, process!] : [process!]
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4 border-b border-outline-variant pb-2">
+        <h2 className="font-label-caps text-label-caps text-primary tracking-tighter">// EXECUTION LINEAGE</h2>
+      </div>
+      <div className="w-full h-32 border border-outline-variant bg-surface-container-lowest relative overflow-hidden flex items-center justify-center px-4">
+        <div
+          className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(#00ff88 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+        />
+        <div className="z-10 flex items-center gap-4 flex-wrap justify-center">
+          {nodes.map((node, i) => (
+            <div key={node} className="flex items-center gap-4">
+              <div
+                className={[
+                  'px-3 py-1 border font-code-sm text-code-sm',
+                  i === nodes.length - 1
+                    ? 'border-primary-container bg-primary-container/10 text-primary-container'
+                    : 'border-outline-variant bg-surface-variant',
+                ].join(' ')}
+              >
+                {node}
+              </div>
+              {i < nodes.length - 1 && (
+                <div className="flex items-center">
+                  <div className="w-8 h-px bg-outline-variant" />
+                  <div className="border-t-4 border-b-4 border-l-4 border-t-transparent border-b-transparent border-l-outline-variant" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function TriagePanel({
+  scenarioId,
+  alertIndex,
+  totalAlerts,
+  existing,
+  onSubmit,
+}: {
+  scenarioId: string
+  alertIndex: number
+  totalAlerts: number
+  existing: TriageResult | undefined
+  onSubmit: (result: TriageResult) => void
+}) {
+  const navigate = useNavigate()
+  const [verdict, setVerdict] = useState<TriageVerdict | null>(null)
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+
+  async function handleSubmit() {
+    if (!verdict) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const res = await submitTriage(scenarioId, alertIndex, { verdict, notes: notes || undefined })
+      onSubmit(res.triage)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (existing) {
+    const isLast = alertIndex >= totalAlerts - 1
+    return (
+      <div className="border border-primary-container/30 bg-surface-container p-6 space-y-6">
+        <h2 className="font-label-caps text-label-caps text-primary flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary-container text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+            check_circle
+          </span>
+          // TRIAGE SUBMITTED
+        </h2>
+        <div className="space-y-[1px] bg-outline-variant">
+          {[
+            ['verdict',   existing.verdict.toUpperCase()],
+            ['submitted', existing.submittedAt.split('T')[0]],
+            ...(existing.notes ? [['notes', existing.notes]] : []),
+          ].map(([k, v]) => (
+            <div key={k} className="grid grid-cols-3 bg-surface-container-lowest p-3">
+              <span className="font-code-sm text-code-sm text-on-surface-variant">{k}</span>
+              <span className="col-span-2 font-code-sm text-code-sm text-primary-container">{v}</span>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => navigate(isLast ? `/scenarios/${scenarioId}` : `/scenarios/${scenarioId}/alerts/${alertIndex + 1}`)}
+          className="w-full h-12 bg-primary-container text-on-primary-container font-label-caps text-label-caps hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-2"
+        >
+          {isLast ? 'BACK TO SCENARIO' : <>NEXT ALERT <span className="material-symbols-outlined text-[16px]">chevron_right</span></>}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <section className="border border-primary-container/30 bg-surface-container p-6">
+      <h2 className="font-label-caps text-label-caps text-primary mb-6 flex items-center gap-2">
+        <span className="material-symbols-outlined text-primary-container text-[18px]">security</span>
+        // TRIAGE ACTION
+      </h2>
+      <div className="space-y-4">
+        {/* Verdict grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {VERDICTS.map(opt => {
+            const selected = verdict === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setVerdict(opt.value)}
+                className={[
+                  'h-12 border transition-all font-label-caps text-label-caps flex flex-col items-center justify-center p-2',
+                  selected
+                    ? `${opt.selectedBorder} ${opt.selectedBg} text-on-surface`
+                    : `border-outline-variant ${opt.hoverBorder} ${opt.hoverBg} text-on-surface`,
+                ].join(' ')}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Notes */}
+        <div className="relative">
+          <div className="absolute top-2 left-3 font-code-sm text-code-sm text-on-surface-variant pointer-events-none">
+            &gt; ANALYST NOTES
+          </div>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Input evidence analysis or justification for verdict..."
+            className="w-full h-40 bg-surface-container-lowest border border-outline-variant focus:border-primary-container focus:outline-none text-primary-container font-code-sm text-code-sm p-3 pt-8 resize-none"
+          />
+          <div className="absolute bottom-2 right-3 text-[9px] text-on-surface-variant">
+            AUTO_SAVE: ENABLED
+          </div>
+        </div>
+
+        {submitError && <ErrorMessage message={submitError} />}
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={!verdict || submitting}
+          className="w-full h-14 bg-primary-container text-on-primary-container font-headline-md text-headline-md font-bold uppercase hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? (
+            <>SUBMITTING<span className="block-cursor" /></>
+          ) : (
+            <>SUBMIT TRIAGE <span className="material-symbols-outlined">send</span></>
+          )}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+export default function AlertTriage() {
+  const { id, index } = useParams<{ id: string; index: string }>()
+  const navigate = useNavigate()
+
+  const alertIndex = parseInt(index ?? '0', 10)
+  const triageKey = `${id}:${alertIndex}`
+
+  const [alert, setAlert] = useState<(Alert & { _index: number }) | null>(null)
+  const [totalAlerts, setTotalAlerts] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [triageMap, setTriageMap] = useState<Map<string, TriageResult>>(new Map())
+
+  const recordTriage = (k: string, v: TriageResult) => {
+    setTriageMap(prev => new Map(prev).set(k, v))
+  }
+
+  useEffect(() => {
+    if (!id || isNaN(alertIndex)) return
+    setLoading(true)
+    setAlert(null)
+    Promise.all([
+      getAlert(id, alertIndex),
+      getScenarioSummary(id),
+    ])
+      .then(([a, s]) => {
+        setAlert(a)
+        setTotalAlerts(s.totalAlerts)
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to load alert')
+      })
+      .finally(() => setLoading(false))
+  }, [id, alertIndex, navigate])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-48px)]">
+        <TerminalLoader text="LOADING ALERT DATA" />
+      </div>
+    )
+  }
+
+  if (error || !alert) {
+    return (
+      <div className="p-margin">
+        <ErrorMessage message={error || 'Alert not found'} />
+        <button onClick={() => navigate(`/scenarios/${id}`)} className="mt-4 font-label-caps text-label-caps text-primary-container hover:text-primary">
+          ← BACK TO SCENARIO
+        </button>
+      </div>
+    )
+  }
+
+  const existing = triageMap.get(triageKey)
+
+  return (
+    <div className="min-h-[calc(100vh-48px)] bg-background pb-12">
+      {/* Header controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-margin pt-6 pb-4 gap-4 border-b border-outline-variant">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(`/scenarios/${id}`)}
+            className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-caps text-label-caps"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            BACK TO SCENARIO
+          </button>
+          <div className="h-4 w-px bg-outline-variant" />
+          <span className="font-label-caps text-label-caps text-primary tracking-widest">
+            ALERT {alertIndex + 1} / {totalAlerts}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={alertIndex <= 0}
+            onClick={() => navigate(`/scenarios/${id}/alerts/${alertIndex - 1}`)}
+            className="px-4 py-2 bg-surface-container-high border border-outline-variant hover:border-primary text-on-surface font-label-caps text-label-caps flex items-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+            PREV
+          </button>
+          <button
+            disabled={alertIndex >= totalAlerts - 1}
+            onClick={() => navigate(`/scenarios/${id}/alerts/${alertIndex + 1}`)}
+            className="px-4 py-2 bg-surface-container-high border border-outline-variant hover:border-primary text-on-surface font-label-caps text-label-caps flex items-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            NEXT
+            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Alert title section */}
+      <div
+        className={[
+          'mx-margin mt-8 mb-8 pl-6',
+          alert.alert_severity === 'critical'     ? 'severity-stripe-critical' :
+          alert.alert_severity === 'high'         ? 'severity-stripe-high' :
+          alert.alert_severity === 'medium'       ? 'severity-stripe-medium' :
+          alert.alert_severity === 'low'          ? 'severity-stripe-low' :
+                                                    'severity-stripe-info',
+        ].join(' ')}
+      >
+        <h1 className="font-headline-lg text-headline-lg text-primary leading-tight mb-2">
+          &gt; {alert.alert_name}
+          <span className="block-cursor" />
+        </h1>
+        <div className="flex flex-wrap gap-4 items-center mt-2">
+          <div className="flex items-center gap-2 bg-error-container/20 px-2 py-1 border border-error/30">
+            <span className="font-label-caps text-label-caps text-error">
+              SEVERITY: [<SeverityBadge severity={alert.alert_severity as AlertSeverity} variant="text" />]
+            </span>
+          </div>
+          <div className="text-on-surface-variant font-code-sm text-code-sm uppercase">
+            SOURCE: <span className="text-primary-container">{alert.source}</span>
+          </div>
+          <div className="text-on-surface-variant font-code-sm text-code-sm uppercase">
+            HOST: <span className="text-primary-container">{alert.host}</span>
+          </div>
+          <div className="text-on-surface-variant font-code-sm text-code-sm uppercase flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]">schedule</span>
+            {alert._time}
+          </div>
+        </div>
+      </div>
+
+      {/* Two-column content */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-margin">
+        {/* Left: details */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* Alert fields */}
+          <section>
+            <div className="flex items-center justify-between mb-4 border-b border-outline-variant pb-2">
+              <h2 className="font-label-caps text-label-caps text-primary tracking-tighter">// ALERT FIELDS</h2>
+              <span className="text-[10px] text-on-surface-variant">HEX_DUMP_ENABLED: TRUE</span>
+            </div>
+            <AlertFieldsPanel alert={alert} />
+          </section>
+
+          <MitreSection alert={alert} />
+
+          <ProcessLineage
+            process={typeof alert.process === 'string' ? alert.process : undefined}
+            parent={typeof alert.parent_process === 'string' ? alert.parent_process : undefined}
+          />
+        </div>
+
+        {/* Right: triage */}
+        <div className="lg:col-span-4">
+          <div className="sticky top-24 space-y-6">
+            <TriagePanel
+              scenarioId={id!}
+              alertIndex={alertIndex}
+              totalAlerts={totalAlerts}
+              existing={existing}
+              onSubmit={result => recordTriage(triageKey, result)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed status bar */}
+      <footer className="fixed bottom-0 left-0 w-full h-6 bg-surface-container-lowest border-t border-outline-variant px-margin flex items-center justify-between text-[10px] z-50">
+        <div className="flex items-center gap-4">
+          <span className="text-primary-container flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse" />
+            SYSTEM: STABLE
+          </span>
+          <span className="text-on-surface-variant">ENCRYPTION: AES-256</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-on-surface-variant">SIGNATURE: {alert.signature}</span>
+          <span className="text-primary-container">OS: CORE_SURVEILLANCE_v4.2</span>
+        </div>
+      </footer>
+    </div>
+  )
+}
