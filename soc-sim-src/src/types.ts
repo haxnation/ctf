@@ -74,6 +74,8 @@ export interface TriageResult {
   verdict: TriageVerdict;
   notes?: string;
   submittedAt: string;
+  isCorrect?: boolean;
+  timeToTriageMs?: number;
 }
 
 export interface TriageResponse {

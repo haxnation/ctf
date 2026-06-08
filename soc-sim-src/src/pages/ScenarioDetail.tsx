@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getScenarioSummary, listAlerts } from '../api'
 import type { Alert, AlertSeverity, ScenarioSummary } from '../types'
 import { initScenarioStream, subscribeToStream } from '../lib/alertStream'
+import { useTriage } from '../contexts/TriageContext'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import type { TriageResult } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
 import TerminalLoader from '../components/TerminalLoader'
 import ErrorMessage from '../components/ErrorMessage'
@@ -96,18 +99,81 @@ function SummaryPanel({ summary }: { summary: ScenarioSummary }) {
   )
 }
 
+function DashboardPanel({ triages }: { triages: TriageResult[] }) {
+  if (triages.length === 0) return null;
+
+  const total = triages.length;
+  const correct = triages.filter(t => t.isCorrect).length;
+  const avgAccuracy = Math.round((correct / total) * 100);
+  
+  const validTimes = triages.map(t => t.timeToTriageMs || 0).filter(t => t > 0);
+  const mttt = validTimes.length ? validTimes.reduce((a, b) => a + b, 0) / validTimes.length : 0;
+  const bestTtt = validTimes.length ? Math.min(...validTimes) : 0;
+  const worstTtt = validTimes.length ? Math.max(...validTimes) : 0;
+
+  const formatMs = (ms: number) => (ms / 1000).toFixed(1) + 's';
+
+  let c = 0;
+  const chartData = [...triages].sort((a,b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()).map((t, i) => {
+    c += t.isCorrect ? 1 : 0;
+    return { name: `A${i+1}`, accuracy: Math.round((c / (i + 1)) * 100) };
+  });
+
+  return (
+    <div className="p-6 bg-surface-container border-b border-outline-variant space-y-6 shrink-0">
+      <h2 className="font-label-caps text-label-caps text-primary flex items-center gap-2">
+        <span className="material-symbols-outlined">analytics</span>
+        // SCENARIO COMPLETE: POST-INCIDENT REPORT
+      </h2>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          ['AVG ACCURACY', `${avgAccuracy}%`],
+          ['MTTT', formatMs(mttt)],
+          ['BEST TTT', formatMs(bestTtt)],
+          ['WORST TTT', formatMs(worstTtt)],
+        ].map(([k, v]) => (
+          <div key={k} className="p-4 border border-outline-variant bg-surface-container-low flex flex-col items-center justify-center gap-1">
+            <span className="text-[10px] text-on-surface-variant font-bold">{k}</span>
+            <span className="text-xl font-headline-md text-primary-container">{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="h-64 border border-outline-variant bg-surface-container-lowest p-4 flex flex-col">
+        <h3 className="text-[10px] text-on-surface-variant font-bold mb-4">// ACCURACY TREND</h3>
+        <div className="flex-1 min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+              <YAxis stroke="#94a3b8" fontSize={10} domain={[0, 100]} />
+              <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px' }} />
+              <Line type="monotone" dataKey="accuracy" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3, fill: '#38bdf8' }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AlertTable({
   alerts,
   scenarioId,
   filters,
   onFilterChange,
   allSources,
+  isDone,
+  triages,
 }: {
   alerts: (Alert & { _index: number })[]
   scenarioId: string
   filters: { severity: string; source: string }
   onFilterChange: (key: string, val: string) => void
   allSources: string[]
+  isDone: boolean
+  triages: TriageResult[]
 }) {
   const navigate = useNavigate()
 
@@ -146,9 +212,18 @@ function AlertTable({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        {alerts.length === 0 ? (
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-auto flex flex-col">
+        {isDone && <DashboardPanel triages={triages} />}
+        
+        {/* Table */}
+        <div className="flex-1">
+        {isDone ? (
+          <div className="flex flex-col items-center justify-center h-64 text-primary opacity-80">
+            <span className="material-symbols-outlined text-[48px]">check_circle</span>
+            <p className="font-label-caps text-label-caps mt-2">// ALL ALERTS RESOLVED. SYSTEM SECURE.</p>
+          </div>
+        ) : alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-on-surface-variant opacity-40">
             <span className="material-symbols-outlined text-[48px]">filter_alt_off</span>
             <p className="font-label-caps text-label-caps mt-2">// NO ALERTS MATCH ACTIVE FILTERS</p>
@@ -196,6 +271,7 @@ function AlertTable({
             </tbody>
           </table>
         )}
+        </div>
       </div>
 
       {/* Footer */}
@@ -223,6 +299,7 @@ export default function ScenarioDetail() {
   const [filters, setFilters] = useState({ severity: '', source: '' })
   const [visibleCount, setVisibleCount] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
+  const { getScenarioTriages } = useTriage()
 
   // Unique source values from the UNFILTERED alert set
   const allSources = [...new Set(allAlerts.map(a => a.source))].sort()
@@ -277,16 +354,21 @@ export default function ScenarioDetail() {
     setFilters(prev => ({ ...prev, [key]: val }))
   }
 
-  const visibleAlerts = alerts.filter(a => a._index < visibleCount)
+  const triagedIndices = new Set(getScenarioTriages(id!).map(t => t.alertIndex))
+  const visibleAlerts = alerts
+    .filter(a => a._index < visibleCount)
+    .filter(a => !triagedIndices.has(a._index))
+    .sort((a, b) => b._index - a._index)
 
+  const streamedAlerts = alerts.filter(a => a._index < visibleCount)
   const computedSummary: ScenarioSummary | null = summary ? {
     ...summary,
     totalAlerts: visibleCount,
-    bySeverity: visibleAlerts.reduce((acc, a) => {
+    bySeverity: streamedAlerts.reduce((acc, a) => {
       acc[a.alert_severity] = (acc[a.alert_severity] || 0) + 1
       return acc
     }, {} as Record<string, number>),
-    bySource: visibleAlerts.reduce((acc, a) => {
+    bySource: streamedAlerts.reduce((acc, a) => {
       acc[a.source] = (acc[a.source] || 0) + 1
       return acc
     }, {} as Record<string, number>)
@@ -326,6 +408,8 @@ export default function ScenarioDetail() {
         filters={filters}
         onFilterChange={handleFilterChange}
         allSources={allSources}
+        isDone={summary !== null && visibleCount === summary.totalAlerts && getScenarioTriages(id!).length === summary.totalAlerts}
+        triages={getScenarioTriages(id!)}
       />
     </div>
   )

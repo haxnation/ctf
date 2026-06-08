@@ -5,25 +5,28 @@ import Compete from './pages/Compete'
 import ScenarioDetail from './pages/ScenarioDetail'
 import AlertTriage from './pages/AlertTriage'
 import { AuthProvider } from './contexts/AuthContext'
+import { TriageProvider } from './contexts/TriageContext'
 import RequireAuth from './components/RequireAuth'
 
 export default function App() {
   return (
     <AuthProvider>
-      <HashRouter>
-        <RequireAuth>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/practice" element={<Practice />} />
-              <Route path="/compete" element={<Compete />} />
-              <Route path="/scenarios/:id" element={<ScenarioDetail />} />
-              <Route path="/scenarios/:id/alerts/:index" element={<AlertTriage />} />
-            </Route>
-            {/* Default redirect */}
-            <Route path="*" element={<Navigate to="/practice" replace />} />
-          </Routes>
-        </RequireAuth>
-      </HashRouter>
+      <TriageProvider>
+        <HashRouter>
+          <RequireAuth>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/practice" element={<Practice />} />
+                <Route path="/compete" element={<Compete />} />
+                <Route path="/scenarios/:id" element={<ScenarioDetail />} />
+                <Route path="/scenarios/:id/alerts/:index" element={<AlertTriage />} />
+              </Route>
+              {/* Default redirect */}
+              <Route path="*" element={<Navigate to="/practice" replace />} />
+            </Routes>
+          </RequireAuth>
+        </HashRouter>
+      </TriageProvider>
     </AuthProvider>
   )
 }

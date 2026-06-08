@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getAlert } from '../api'
 import type { Alert, AlertSeverity, TriageResult, TriageVerdict } from '../types'
 import { subscribeToStream } from '../lib/alertStream'
+import { useTriage } from '../contexts/TriageContext'
 import SeverityBadge from '../components/SeverityBadge'
 import TerminalLoader from '../components/TerminalLoader'
 import ErrorMessage from '../components/ErrorMessage'
@@ -159,12 +160,14 @@ function TriagePanel({
   totalAlerts,
   existing,
   onSubmit,
+  timeToTriageMs,
 }: {
   scenarioId: string
   alert: Alert & { _index: number }
   totalAlerts: number
-  existing: (TriageResult & { isCorrect?: boolean }) | undefined
-  onSubmit: (result: TriageResult & { isCorrect: boolean }) => void
+  existing: (TriageResult & { isCorrect?: boolean; timeToTriageMs?: number }) | undefined
+  onSubmit: (result: TriageResult & { isCorrect: boolean; timeToTriageMs?: number }) => void
+  timeToTriageMs?: number
 }) {
   const navigate = useNavigate()
   const [verdict, setVerdict] = useState<TriageVerdict | null>(null)
@@ -195,7 +198,8 @@ function TriagePanel({
         alertName: alert.alert_name,
         verdict, 
         submittedAt: new Date().toISOString(), 
-        isCorrect 
+        isCorrect,
+        timeToTriageMs
       })
       
       const isLast = alert._index >= totalAlerts - 1
@@ -300,13 +304,12 @@ export default function AlertTriage() {
   const [alert, setAlert] = useState<(Alert & { _index: number }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [triageMap, setTriageMap] = useState<Map<string, TriageResult & { isCorrect?: boolean }>>(new Map())
+  const { triageMap, recordTriage } = useTriage()
   const [visibleCount, setVisibleCount] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
+  const [startTime, setStartTime] = useState<number | null>(null)
 
-  const recordTriage = (k: string, v: TriageResult & { isCorrect?: boolean }) => {
-    setTriageMap(prev => new Map(prev).set(k, v))
-  }
+
 
   useEffect(() => {
     const unsub = subscribeToStream((count, isNew) => {
@@ -326,6 +329,7 @@ export default function AlertTriage() {
     getAlert(id, alertIndex)
       .then(a => {
         setAlert(a)
+        setStartTime(Date.now())
       })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to load alert')
@@ -458,6 +462,7 @@ export default function AlertTriage() {
               totalAlerts={visibleCount}
               existing={existing}
               onSubmit={result => recordTriage(triageKey, result)}
+              timeToTriageMs={startTime ? Date.now() - startTime : 0}
             />
           </div>
         </div>
