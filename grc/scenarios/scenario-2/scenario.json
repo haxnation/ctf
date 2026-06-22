@@ -2,6 +2,7 @@
   "id": "scenario-2",
   "title": "Audit Task: IAM Roster Reconciliation",
   "description": "As part of the monthly ISO 27001 compliance checks, the GRC Operations team must ensure strict adherence to the Employee Offboarding Policy. Cross-reference the relevant logs provided by the Admin and IT departments to identify any potential security policy violations.",
+  "justification": "Alice Smith and Charlie Davis were discovered as 'Active' in the central IAM roster despite HR records showing they left the company over 7 days ago. This violates the strict 7-day access revocation SLA defined in the Offboarding Policy.",
   "departments": [
     {
       "id": "grc",

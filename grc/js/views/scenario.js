@@ -368,6 +368,12 @@ function evaluateSubmission(fileDef) {
                         <li class="flex justify-between border-b border-ink border-dashed pb-2"><span>Status:</span> <span class="text-success font-bold">COMPLIANT</span></li>
                     </ul>
                     <p class="font-sans text-ink leading-relaxed font-semibold">All necessary policy violations have been successfully flagged and logged for remediation. The network is now secure.</p>
+                    ${currentScenario.justification ? `
+                    <div class="mt-6 p-4 bg-canvas border-l-4 border-cyan">
+                        <h3 class="font-mono text-xs font-bold text-ink uppercase tracking-widest mb-2">> Official Justification</h3>
+                        <p class="font-sans text-sm text-ink leading-relaxed">${DOMPurify.sanitize(currentScenario.justification)}</p>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <button onclick="window.navigateGrc('/grc/practice')" class="font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-4 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75 w-full sm:w-auto">

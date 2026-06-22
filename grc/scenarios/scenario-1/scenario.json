@@ -2,6 +2,7 @@
   "id": "scenario-1",
   "title": "Audit Task: Access Control Review",
   "description": "The compliance team has requested a periodic review of the Access Control Policy (ISMS-POL-04). Carefully analyze the document against standard access lifecycle requirements and identify any structural or operational deficiencies.",
+  "justification": "Section 4.1 explicitly mentions that roles and responsibilities are defined in a RACI matrix, but the matrix is missing from the document. This leaves critical accountability undefined and violates structural completeness requirements.",
   "departments": [
     {
       "id": "grc",
