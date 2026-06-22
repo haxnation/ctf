@@ -10,10 +10,7 @@
 ## Instructions
 The following table is a real-time export from the Central IAM directory representing all accounts currently marked as `Active` on the network. 
 
-As part of the monthly compliance check, you must cross-reference this list with the HR Joiners/Leavers report located on the Admin Desk. Based on the **7-day revocation SLA** defined in the Offboarding Policy, identify any user accounts that are in violation of the policy.
-
-> [!IMPORTANT]
-> Click on a user's row below to mark them as a finding. You must highlight **all** violator accounts before submitting your findings.
+As part of the monthly compliance check, you must cross-reference this list with the HR Joiners/Leavers report located on the Admin Desk to ensure strict compliance with internal SLAs.
 
 ## Active Users Roster
 
