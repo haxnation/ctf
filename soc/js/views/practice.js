@@ -64,11 +64,13 @@ export async function renderPractice() {
     const res = await listScenarios();
     const scenarios = res.scenarios;
     
-    document.getElementById('stat-active').textContent = scenarios.length;
-    document.getElementById('stat-critical').textContent = scenarios.filter(s => s.difficulty === 'advanced').length;
+    const statActive = document.getElementById('stat-active');
+    if (statActive) statActive.textContent = scenarios.length;
+    const statCritical = document.getElementById('stat-critical');
+    if (statCritical) statCritical.textContent = scenarios.filter(s => s.difficulty === 'advanced').length;
     
     const grid = document.getElementById('practice-grid');
-    grid.innerHTML = '';
+    if (grid) grid.innerHTML = '';
     
     scenarios.forEach(scenario => {
       const card = document.createElement('div');
@@ -144,16 +146,21 @@ export async function renderPractice() {
         titleEl.innerText = titleText;
       });
       
-      grid.appendChild(card);
+      if (grid) grid.appendChild(card);
     });
     
-    document.getElementById('term-loaded-msg').innerText = `[${now}] Simulation environments loaded: ${scenarios.length} scenario(s) available`;
-    document.getElementById('practice-terminal').classList.remove('hidden');
+    const loadedMsg = document.getElementById('term-loaded-msg');
+    if (loadedMsg) loadedMsg.innerText = `[${now}] Simulation environments loaded: ${scenarios.length} scenario(s) available`;
+    const terminal = document.getElementById('practice-terminal');
+    if (terminal) terminal.classList.remove('hidden');
     
   } catch (err) {
     const errEl = document.getElementById('practice-error');
-    errEl.innerText = err.message || 'Failed to load scenarios';
-    errEl.classList.remove('hidden');
-    document.getElementById('practice-grid').innerHTML = '';
+    if (errEl) {
+      errEl.innerText = err.message || 'Failed to load scenarios';
+      errEl.classList.remove('hidden');
+    }
+    const grid = document.getElementById('practice-grid');
+    if (grid) grid.innerHTML = '';
   }
 }
