@@ -10,7 +10,7 @@ function renderJsonViewer(data, name) {
   if (!isObject) {
     return `<div class="flex gap-2">
       ${name ? `<span class="text-ink opacity-70 shrink-0">${name}:</span>` : ''}
-      <span class="text-cyan break-all">${String(data)}</span>
+      <span class="text-cyan-700 font-bold break-all text-[#008b8b]">${String(data)}</span>
     </div>`;
   }
   
@@ -20,8 +20,9 @@ function renderJsonViewer(data, name) {
   if (isEmpty) return '';
 
   return `
-    <details class="font-mono text-[10px]" open>
-      <summary class="cursor-pointer hover:bg-ink/10 inline-flex items-center gap-1 select-none text-ink py-0.5 px-1 -ml-1 transition-colors outline-none">
+    <details class="font-mono text-[10px] group" open>
+      <summary class="cursor-pointer hover:bg-ink/10 inline-flex items-center gap-1 select-none text-ink py-0.5 px-1 -ml-1 transition-colors outline-none list-none [&::-webkit-details-marker]:hidden">
+        <span class="inline-block transition-transform group-open:rotate-90 text-[8px] opacity-50">▶</span>
         ${name ? `<span class="text-ink opacity-70">${name}: </span>` : ''}
         <span class="text-ink opacity-50 italic">
           ${isArray ? `[${keys.length} items]` : `{${keys.length} keys}`}
