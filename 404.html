@@ -8,11 +8,11 @@
       (function() {
         var p = window.location.pathname;
         if (p.indexOf('/soc') === 0 && p.indexOf('/soc/index.html') === -1) {
-          window.location.replace('/soc/index.html');
+          window.location.replace('/soc/index.html?p=' + encodeURIComponent(p));
           document.write('');
           document.close();
         } else if (p.indexOf('/grc') === 0 && p.indexOf('/grc/index.html') === -1) {
-          window.location.replace('/grc/index.html');
+          window.location.replace('/grc/index.html?p=' + encodeURIComponent(p));
           document.write('');
           document.close();
         }
