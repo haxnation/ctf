@@ -8,11 +8,11 @@
       (function() {
         var p = window.location.pathname;
         if (p.indexOf('/soc') === 0 && p.indexOf('/soc/index.html') === -1) {
-          window.location.replace('/soc/index.html');
+          window.location.replace('/soc/index.html?p=' + encodeURIComponent(p));
           document.write('');
           document.close();
         } else if (p.indexOf('/grc') === 0 && p.indexOf('/grc/index.html') === -1) {
-          window.location.replace('/grc/index.html');
+          window.location.replace('/grc/index.html?p=' + encodeURIComponent(p));
           document.write('');
           document.close();
         }
@@ -38,7 +38,7 @@
     <link rel="shortcut icon" href="/favicons/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
     <link rel="manifest" href="/favicons/site.webmanifest" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>
         tailwind.config = {
             theme: {

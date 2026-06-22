@@ -223,7 +223,7 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
         container.innerHTML = `<div class="prose max-w-none text-ink" id="interactive-md-container">${DOMPurify.sanitize(rawHtml)}</div>`;
         
         const containerEl = document.getElementById('interactive-md-container');
-        const blocks = containerEl.querySelectorAll('p, li, td, th, h1, h2, h3, h4, h5, h6');
+        const blocks = containerEl.querySelectorAll('p, li, tr, h1, h2, h3, h4, h5, h6');
         
         blocks.forEach((el, index) => {
             el.classList.add('md-interactive-line');
@@ -271,6 +271,7 @@ function evaluateSubmission(fileDef) {
     
     const solutions = fileDef.solutionTexts || [];
     let allFound = true;
+    let hasFalsePositives = false;
     
     // Check if every solution text is present in at least one highlighted line
     for (const sol of solutions) {
@@ -283,12 +284,50 @@ function evaluateSubmission(fileDef) {
         if (!found) allFound = false;
     }
     
-    // Also might want to check for false positives, but let's keep it simple: 
-    // as long as they highlighted the correct lines, they pass.
+    // Check for false positives: highlighting anything that isn't a solution
+    highlightedEls.forEach(el => {
+        let matchesASolution = false;
+        const raw = el.getAttribute('data-raw');
+        for (const sol of solutions) {
+            if (raw.includes(sol)) {
+                matchesASolution = true;
+                break;
+            }
+        }
+        if (!matchesASolution) {
+            hasFalsePositives = true;
+        }
+    });
+    
+    if (hasFalsePositives) {
+        showToast('error', 'ACCESS DENIED: Extraneous findings identified. You must only highlight the exact violations.');
+        return;
+    }
     
     if (allFound && solutions.length > 0) {
         showToast('success', 'ACCESS GRANTED: Correct findings identified. Scenario Solved.');
-        // Could mark scenario as complete here via an API or localStorage
+        
+        const mainContainer = document.getElementById('view-scenario');
+        mainContainer.innerHTML = `
+            <div class="text-center py-10 sm:py-20 max-w-2xl mx-auto">
+                <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-4 bg-success inline-block px-3 py-1 border-2 border-ink shadow-[2px_2px_0_0_#0b0b0b]">SYS // AUDIT COMPLETE</p>
+                <h1 class="text-5xl sm:text-6xl font-black text-ink uppercase tracking-tighter mb-8 leading-none">Operation Successful</h1>
+                
+                <div class="bg-white border-4 border-ink p-6 sm:p-10 shadow-[8px_8px_0_0_#0b0b0b] mb-10 text-left">
+                    <h2 class="text-2xl font-black uppercase tracking-tighter mb-6 text-ink border-b-4 border-ink pb-2">> Audit Report</h2>
+                    <ul class="font-mono text-sm space-y-4 mb-8">
+                        <li class="flex justify-between border-b border-ink border-dashed pb-2"><span>Target:</span> <span class="font-bold text-right">${currentScenario.title}</span></li>
+                        <li class="flex justify-between border-b border-ink border-dashed pb-2"><span>Findings Identified:</span> <span class="font-bold">${solutions.length}</span></li>
+                        <li class="flex justify-between border-b border-ink border-dashed pb-2"><span>Status:</span> <span class="text-success font-bold">COMPLIANT</span></li>
+                    </ul>
+                    <p class="font-sans text-ink leading-relaxed font-semibold">All necessary policy violations have been successfully flagged and logged for remediation. The network is now secure.</p>
+                </div>
+                
+                <button onclick="window.navigateGrc('/grc/practice')" class="font-mono uppercase tracking-widest font-bold bg-cyan text-ink border-2 border-ink px-8 py-4 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-75 w-full sm:w-auto">
+                    > Return to Arena
+                </button>
+            </div>
+        `;
     } else {
         showToast('error', 'ACCESS DENIED: Incorrect or incomplete findings. Review the policy again.');
     }

@@ -30,6 +30,11 @@ const app = {
   },
   
   async handleRoute() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectPath = urlParams.get('p');
+    if (redirectPath) {
+      window.history.replaceState({}, '', redirectPath);
+    }
     const path = window.location.pathname;
     
     if (path === '/grc' || path === '/grc/' || path === '/grc/index.html') {
