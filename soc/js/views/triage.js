@@ -90,7 +90,7 @@ let selectedVerdict = null;
 
 export async function renderTriage(scenarioId, alertIndex) {
   const container = document.getElementById('view-triage');
-  container.innerHTML = `<div class="text-center py-20 animate-pulse font-mono font-bold uppercase tracking-widest text-ink">Accessing Logs...</div>`;
+  if (container) container.innerHTML = `<div class="text-center py-20 animate-pulse font-mono font-bold uppercase tracking-widest text-ink">Accessing Logs...</div>`;
   
   currentScenarioId = scenarioId;
   startTime = Date.now();
@@ -101,12 +101,13 @@ export async function renderTriage(scenarioId, alertIndex) {
     currentAlert = alertData;
     updateTriageUI();
   } catch (err) {
-    container.innerHTML = `<div class="bg-danger text-white border-2 border-ink p-4 font-mono font-bold shadow-[4px_4px_0_0_#0b0b0b]">${err.message || 'Failed to load alert'}</div>`;
+    if (container) container.innerHTML = `<div class="bg-danger text-white border-2 border-ink p-4 font-mono font-bold shadow-[4px_4px_0_0_#0b0b0b]">${err.message || 'Failed to load alert'}</div>`;
   }
 }
 
 function updateTriageUI() {
   const container = document.getElementById('view-triage');
+  if (!container) return;
   const existing = getTriage(`${currentScenarioId}-${currentAlert._index}`);
   
   const SEV_COLORS = {

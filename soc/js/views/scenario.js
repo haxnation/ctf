@@ -56,6 +56,11 @@ let currentFilters = { severity: '', source: '' };
 let unsubscribeStream = null;
 
 export async function renderScenario(scenarioId) {
+  if (unsubscribeStream) {
+    unsubscribeStream();
+    unsubscribeStream = null;
+  }
+  
   const container = document.getElementById('view-scenario');
   activeScenarioId = scenarioId;
   
@@ -207,7 +212,8 @@ export async function renderScenario(scenarioId) {
       if (unsubscribeStream) unsubscribeStream();
       unsubscribeStream = subscribeToStream((count) => {
         const displayAlerts = visibleAlerts.filter(a => a._index < count);
-        document.getElementById('alert-count').innerText = displayAlerts.length;
+        const countEl = document.getElementById('alert-count');
+        if (countEl) countEl.innerText = displayAlerts.length;
         
         if (displayAlerts.length === 0) {
           document.getElementById('alerts-table-container').innerHTML = `
@@ -275,8 +281,11 @@ export async function renderScenario(scenarioId) {
     
   } catch (err) {
     const errEl = document.getElementById('scenario-error');
-    errEl.innerText = err.message || 'Failed to load scenario details';
-    errEl.classList.remove('hidden');
-    document.getElementById('scenario-content').innerHTML = '';
+    if (errEl) {
+      errEl.innerText = err.message || 'Failed to load scenario details';
+      errEl.classList.remove('hidden');
+    }
+    const contentEl = document.getElementById('scenario-content');
+    if (contentEl) contentEl.innerHTML = '';
   }
 }
