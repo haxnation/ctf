@@ -2,6 +2,7 @@
   "id": "scenario-3",
   "title": "Audit Task: Data Classification Sweep",
   "description": "The compliance team is verifying adherence to the internal Data Classification Policy. Review the classification standards and then cross-reference them with the current data warehouse inventory. Identify any datasets that are improperly classified or mislabeled.",
+  "justification": "DB_PROD_CUSTOMERS contains restricted credit card data but is improperly classified as 'Internal'. DB_METRICS_AGG contains generic anonymous metrics but is improperly over-classified as 'Confidential'.",
   "departments": [
     {
       "id": "grc",
