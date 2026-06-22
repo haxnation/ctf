@@ -53,7 +53,7 @@ jobs:
         run: |
           mkdir _site
           rsync -av --exclude='.git' --exclude='.github' --exclude='soc-sim-src' --exclude='_site' . _site/
-          mv soc-sim-src/dist _site/soc-sim
+          mv soc-sim-src/dist _site/soc
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
