@@ -259,7 +259,15 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
     } else {
         // Interactive block render
         const rawHtml = marked.parse(mdText);
-        container.innerHTML = `<div class="prose max-w-none text-ink" id="interactive-md-container">${DOMPurify.sanitize(rawHtml)}</div>`;
+        
+        let bannerHtml = `
+            <div class="mb-8 p-4 border-2 border-ink bg-warning shadow-[4px_4px_0_0_#0b0b0b]">
+                <p class="font-mono text-sm font-bold uppercase tracking-widest">> ACTION REQUIRED</p>
+                <p class="font-sans text-ink font-semibold">Review the document below. If you identify a violation or missing component, click the specific text to mark it as a finding.</p>
+            </div>
+        `;
+        
+        container.innerHTML = bannerHtml + `<div class="prose max-w-none text-ink" id="interactive-md-container">${DOMPurify.sanitize(rawHtml)}</div>`;
         
         const containerEl = document.getElementById('interactive-md-container');
         const blocks = containerEl.querySelectorAll('p, li, tr, h1, h2, h3, h4, h5, h6');

@@ -1,7 +1,7 @@
 {
   "id": "scenario-2",
-  "title": "Operation: Ghost Accounts",
-  "description": "Cross-reference the Joiners/Leavers list from HR (Admin Desk) with the Active Users list (IT Desk) against the GRC offboarding policy. Find the users who left the company more than 7 days ago but still have active system access. Highlight them in the interactive 'active_users.md' document on the IT Desk.",
+  "title": "Audit Task: IAM Roster Reconciliation",
+  "description": "As part of the monthly ISO 27001 compliance checks, the GRC Operations team must ensure strict adherence to the Employee Offboarding Policy. Cross-reference the relevant logs provided by the Admin and IT departments to identify any potential security policy violations.",
   "departments": [
     {
       "id": "grc",

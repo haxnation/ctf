@@ -1,7 +1,7 @@
 {
   "id": "scenario-1",
-  "title": "Operation: Missing RACI",
-  "description": "A recent internal audit discovered that the Access Control Policy is incomplete. The policy lacks proper responsibility assignments. Find and highlight the sentence mentioning the missing RACI matrix to complete the finding.",
+  "title": "Audit Task: Access Control Review",
+  "description": "The compliance team has requested a periodic review of the Access Control Policy (ISMS-POL-04). Carefully analyze the document against standard access lifecycle requirements and identify any structural or operational deficiencies.",
   "departments": [
     {
       "id": "grc",
