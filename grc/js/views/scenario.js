@@ -188,7 +188,7 @@ async function renderFileViewer(fileDef) {
 }
 
 function renderCSV(csvText, container) {
-    const lines = csvText.split('\\n').filter(l => l.trim() !== '');
+    const lines = csvText.split('\n').filter(l => l.trim() !== '');
     if (lines.length === 0) {
         container.innerHTML = "Empty CSV";
         return;
@@ -218,32 +218,20 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
         const rawHtml = marked.parse(mdText);
         container.innerHTML = `<div class="prose max-w-none text-ink">${DOMPurify.sanitize(rawHtml)}</div>`;
     } else {
-        // Interactive line-by-line render
-        // We split by double newlines for paragraphs, or single lines if list items
-        // To keep it simple, we'll split by newline, and render each line separately if it has content
-        const lines = mdText.split('\\n');
-        let html = '<div class="font-sans text-base leading-relaxed text-ink" id="interactive-md-container">';
+        // Interactive block render
+        const rawHtml = marked.parse(mdText);
+        container.innerHTML = `<div class="prose max-w-none text-ink" id="interactive-md-container">${DOMPurify.sanitize(rawHtml)}</div>`;
         
-        lines.forEach((line, index) => {
-            if (line.trim() === '') {
-                html += '<br/>';
-                return;
-            }
-            // Parse line with marked (inline mostly)
-            let parsed = marked.parse(line);
-            // Remove wrapping p tags that marked adds
-            parsed = parsed.replace(/^<p>/, '').replace('</p>', '').trim();
+        const containerEl = document.getElementById('interactive-md-container');
+        const blocks = containerEl.querySelectorAll('p, li, td, th, h1, h2, h3, h4, h5, h6');
+        
+        blocks.forEach((el, index) => {
+            el.classList.add('md-interactive-line');
+            // Store the text content for validation
+            el.setAttribute('data-raw', el.innerText || el.textContent);
             
-            html += `<div class="md-interactive-line" data-line-index="${index}" data-raw="${DOMPurify.sanitize(line)}">${DOMPurify.sanitize(parsed)}</div>`;
-        });
-        html += '</div>';
-        
-        container.innerHTML = html;
-        
-        // Attach click listeners
-        const lineEls = container.querySelectorAll('.md-interactive-line');
-        lineEls.forEach(el => {
-            el.addEventListener('click', () => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
                 el.classList.toggle('highlighted');
             });
         });
