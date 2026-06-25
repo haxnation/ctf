@@ -13,7 +13,7 @@ export async function renderScenario(id) {
         container.innerHTML = `
             <div class="text-center py-20">
                 <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-4 bg-danger text-white inline-block px-3 py-1 border-2 border-ink">SYS // ERROR</p>
-                <h1 class="text-4xl font-black text-ink uppercase tracking-tighter mb-4">Scenario Not Found</h1>
+                <h1 class="text-4xl font-extrabold text-ink uppercase tracking-tighter mb-4">Scenario Not Found</h1>
                 <button onclick="window.navigateGrc('/grc/practice')" class="btn-primary mt-6">Return</button>
             </div>`;
         return;
@@ -41,12 +41,15 @@ function renderLayout() {
             <div class="flex justify-between items-end border-b-4 border-ink pb-4">
                 <div>
                     <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-cyan inline-block px-2 border-2 border-ink">SYS // AUDIT_MODE</p>
-                    <h1 class="text-4xl sm:text-5xl font-black text-ink uppercase tracking-tighter leading-none">
+                    <h1 class="text-4xl sm:text-5xl font-extrabold text-ink uppercase tracking-tighter leading-none">
                         ${currentScenario.title}
                     </h1>
                 </div>
             </div>
-            <p class="font-mono text-sm mt-4 text-ink opacity-80">${currentScenario.description || ''}</p>
+            <div class="mt-4 p-4 bg-white border-2 border-ink shadow-[4px_4px_0_0_#0b0b0b]">
+                <h2 class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 border-b-2 border-ink pb-1">> Mission Objective</h2>
+                <p class="font-sans text-sm text-ink">${currentScenario.description || ''}</p>
+            </div>
         </div>
     `;
 
@@ -81,9 +84,9 @@ function renderLayout() {
                 <div class="bg-canvas border-b-2 border-ink p-3 flex justify-between items-center">
                     <span id="viewer-title" class="font-mono text-sm font-bold uppercase tracking-widest">> Select a file</span>
                     <div id="viewer-actions" class="hidden flex gap-2">
-                        <button id="btn-download-raw" class="btn-secondary !text-[10px] !py-1 !px-2 hidden">Download File</button>
-                        <button id="btn-export-pdf" class="btn-secondary !text-[10px] !py-1 !px-2 hidden">Export PDF</button>
-                        <button id="btn-submit-findings" class="btn-primary !text-[10px] !py-1 !px-2 hidden">Submit Findings</button>
+                        <button id="btn-download-raw" class="btn-secondary !text-xs !py-1 !px-2 hidden">Download File</button>
+                        <button id="btn-export-pdf" class="btn-secondary !text-xs !py-1 !px-2 hidden">Export PDF</button>
+                        <button id="btn-submit-findings" class="btn-primary !text-xs !py-1 !px-2 hidden">Submit Findings</button>
                     </div>
                 </div>
                 <div id="viewer-content" class="p-6 overflow-auto flex-grow relative">
@@ -138,14 +141,16 @@ function renderFileList() {
     }
 
     let html = '';
+    const fileIcon = `<svg class="inline-block w-4 h-4 mr-1 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><rect x="4" y="2" width="16" height="20"></rect><path d="M4 6h16M4 18h16M8 10h8M8 14h8"></path></svg>`;
     for (const f of dept.files) {
         const isActive = f.id === currentFileId;
         const baseClass = "font-mono text-xs text-left p-2 border-2 transition-colors duration-75 block w-full truncate";
         const activeClass = isActive 
             ? "bg-cyan border-ink font-bold shadow-[2px_2px_0_0_#0b0b0b]" 
             : "bg-canvas border-transparent hover:border-ink hover:bg-white";
+        const interactiveBadge = f.interactive ? `<span class="bg-warning text-ink px-1 ml-2 text-[10px] font-bold border border-ink">GRADING</span>` : '';
             
-        html += `<button class="${baseClass} ${activeClass}" onclick="window.switchFile('${f.id}')" title="${f.name}">📄 ${f.name}</button>`;
+        html += `<button class="${baseClass} ${activeClass}" onclick="window.switchFile('${f.id}')" title="${f.name}">${fileIcon}${f.name}${interactiveBadge}</button>`;
     }
     
     listContainer.innerHTML = html;
@@ -235,7 +240,7 @@ function renderCSV(csvText, container) {
     
     let html = '<table class="w-full text-left font-sans text-sm border-collapse border-2 border-ink">';
     lines.forEach((line, i) => {
-        const cols = line.split(',');
+        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
         html += '<tr class="border-b border-ink">';
         cols.forEach(col => {
             if (i === 0) {
@@ -267,7 +272,7 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
                         <p class="font-mono text-sm font-bold uppercase tracking-widest">> INTERACTIVE AUDIT MODE ENABLED</p>
                         <p class="font-sans text-ink font-semibold mt-1">Please review the document below carefully. To log a policy violation or finding, simply click directly on the specific sentence, list item, or table row to highlight it. You must highlight all relevant findings before submitting.</p>
                     </div>
-                    <button id="btn-clear-markings" class="btn-secondary !text-[10px] !py-1 !px-2 whitespace-nowrap bg-white text-ink hover:bg-danger hover:text-white hover:border-danger transition-colors">Clear All Markings</button>
+                    <button id="btn-clear-markings" class="btn-secondary !text-xs !py-1 !px-2 whitespace-nowrap bg-white text-ink hover:bg-danger hover:text-white hover:border-danger transition-colors">Clear All Markings</button>
                 </div>
             </div>
         `;
@@ -277,6 +282,7 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
         document.getElementById('btn-clear-markings').onclick = () => {
             if (confirm("Are you sure you want to clear all markings across all documents?")) {
                 window.grcHighlights = {};
+                localStorage.setItem('grcHighlights', JSON.stringify(window.grcHighlights));
                 renderFileViewer(fileDef); // Re-render to drop highlighted classes
                 showToast('success', 'All markings cleared.');
             }
@@ -285,7 +291,7 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
         const containerEl = document.getElementById('interactive-md-container');
         const blocks = containerEl.querySelectorAll('p, li, tr, h1, h2, h3, h4, h5, h6');
         
-        window.grcHighlights = window.grcHighlights || {};
+        window.grcHighlights = JSON.parse(localStorage.getItem('grcHighlights') || '{}');
         const fileKey = currentScenario.id + '_' + fileDef.id;
         if (!window.grcHighlights[fileKey]) {
             window.grcHighlights[fileKey] = [];
@@ -297,14 +303,20 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
             const rawText = el.innerText || el.textContent;
             el.setAttribute('data-raw', rawText);
             
+            el.setAttribute('tabindex', '0');
+            el.setAttribute('role', 'button');
+            const isInitiallyHighlighted = window.grcHighlights[fileKey].includes(rawText);
+            el.setAttribute('aria-pressed', isInitiallyHighlighted ? 'true' : 'false');
+            
             // Restore previous highlighted state
-            if (window.grcHighlights[fileKey].includes(rawText)) {
+            if (isInitiallyHighlighted) {
                 el.classList.add('highlighted');
             }
             
-            el.addEventListener('click', (e) => {
+            const toggleHighlight = (e) => {
                 e.stopPropagation();
                 const isHighlighted = el.classList.toggle('highlighted');
+                el.setAttribute('aria-pressed', isHighlighted ? 'true' : 'false');
                 
                 // Save state
                 if (isHighlighted) {
@@ -313,6 +325,15 @@ function renderMarkdown(mdText, container, fileDef, pdfBtn, submitBtn) {
                     }
                 } else {
                     window.grcHighlights[fileKey] = window.grcHighlights[fileKey].filter(t => t !== rawText);
+                }
+                localStorage.setItem('grcHighlights', JSON.stringify(window.grcHighlights));
+            };
+
+            el.addEventListener('click', toggleHighlight);
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleHighlight(e);
                 }
             });
         });
@@ -377,6 +398,8 @@ function evaluateSubmission(fileDef) {
     const solutions = fileDef.solutionTexts || [];
     let allFound = true;
     let hasFalsePositives = false;
+    let missingFindingsCount = 0;
+    let extraneousLinesCount = 0;
     
     // Check if every solution text is present in at least one highlighted line
     for (const sol of solutions) {
@@ -386,7 +409,10 @@ function evaluateSubmission(fileDef) {
                 found = true;
             }
         });
-        if (!found) allFound = false;
+        if (!found) {
+            allFound = false;
+            missingFindingsCount++;
+        }
     }
     
     // Check for false positives: highlighting anything that isn't a solution
@@ -401,11 +427,15 @@ function evaluateSubmission(fileDef) {
         }
         if (!matchesASolution) {
             hasFalsePositives = true;
+            extraneousLinesCount++;
         }
     });
     
-    if (hasFalsePositives) {
-        showToast('error', 'ACCESS DENIED: Extraneous findings identified. You must only highlight the exact violations.');
+    if (hasFalsePositives || !allFound) {
+        let msgs = [];
+        if (missingFindingsCount > 0) msgs.push(`Missing ${missingFindingsCount} required finding(s).`);
+        if (extraneousLinesCount > 0) msgs.push(`${extraneousLinesCount} extraneous line(s) selected.`);
+        showToast('error', `ACCESS DENIED: ${msgs.join(' ')}`);
         return;
     }
     
@@ -419,16 +449,20 @@ function evaluateSubmission(fileDef) {
                     delete window.grcHighlights[key];
                 }
             }
+            localStorage.setItem('grcHighlights', JSON.stringify(window.grcHighlights));
         }
+        
+        // Mark scenario as completed
+        localStorage.setItem('grc_completed_' + currentScenario.id, 'true');
         
         const mainContainer = document.getElementById('view-scenario');
         mainContainer.innerHTML = `
             <div class="text-center py-10 sm:py-20 max-w-2xl mx-auto">
                 <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-4 bg-success inline-block px-3 py-1 border-2 border-ink shadow-[2px_2px_0_0_#0b0b0b]">SYS // AUDIT COMPLETE</p>
-                <h1 class="text-5xl sm:text-6xl font-black text-ink uppercase tracking-tighter mb-8 leading-none">Operation Successful</h1>
+                <h1 class="text-5xl sm:text-6xl font-extrabold text-ink uppercase tracking-tighter mb-8 leading-none">Operation Successful</h1>
                 
                 <div class="bg-white border-4 border-ink p-6 sm:p-10 shadow-[8px_8px_0_0_#0b0b0b] mb-10 text-left">
-                    <h2 class="text-2xl font-black uppercase tracking-tighter mb-6 text-ink border-b-4 border-ink pb-2">> Audit Report</h2>
+                    <h2 class="text-2xl font-extrabold uppercase tracking-tighter mb-6 text-ink border-b-4 border-ink pb-2">> Audit Report</h2>
                     <ul class="font-mono text-sm space-y-4 mb-8">
                         <li class="flex justify-between border-b border-ink border-dashed pb-2"><span>Target:</span> <span class="font-bold text-right">${currentScenario.title}</span></li>
                         <li class="flex justify-between border-b border-ink border-dashed pb-2"><span>Findings Identified:</span> <span class="font-bold">${solutions.length}</span></li>
@@ -448,8 +482,6 @@ function evaluateSubmission(fileDef) {
                 </button>
             </div>
         `;
-    } else {
-        showToast('error', 'ACCESS DENIED: Incorrect or incomplete findings. Review the policy again.');
     }
 }
 
@@ -459,7 +491,7 @@ function showToast(type, msg) {
     if (!tc) return alert(msg);
     
     const t = document.createElement('div');
-    const color = type === 'success' ? 'bg-success text-ink' : type === 'error' ? 'bg-danger text-white' : 'bg-ink text-white';
+    const color = type === 'success' ? 'bg-success text-ink' : type === 'error' ? 'bg-danger text-ink' : 'bg-ink text-white';
     t.className = `font-mono text-sm font-bold uppercase p-4 border-2 border-ink shadow-[4px_4px_0_0_#0b0b0b] ${color} transition-all duration-300 opacity-0 translate-x-10`;
     t.innerText = msg;
     
