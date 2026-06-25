@@ -7,7 +7,7 @@ export async function renderPractice() {
     container.innerHTML = `
         <div class="mb-10">
             <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-cyan inline-block px-2 border-2 border-ink">SYS // TRAINING GROUNDS</p>
-            <h1 class="text-5xl sm:text-7xl font-black text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
+            <h1 class="text-5xl sm:text-7xl font-extrabold text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
                 Practice Arena<span class="inline-block w-4 h-[0.8em] bg-cyan animate-pulse align-middle ml-2 border-2 border-ink"></span>
             </h1>
         </div>
@@ -25,11 +25,13 @@ export async function renderPractice() {
     } else {
         gridHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
         for (const s of scenarios) {
+            const isCompleted = localStorage.getItem('grc_completed_' + s.id);
+            const badgeHtml = isCompleted ? `<span class="inline-flex items-center ml-2 font-mono text-[10px] bg-success text-ink font-bold border border-ink px-1.5 py-0.5 shadow-[1px_1px_0_0_#0b0b0b] align-middle">COMPLETED</span>` : '';
             gridHtml += `
                 <a href="/grc/scenarios/${s.id}" data-nav class="group block bg-white border-2 border-ink shadow-[6px_6px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_#0b0b0b] transition-all p-6">
                     <div class="flex items-center justify-between mb-4 border-b-2 border-ink pb-2">
-                        <h3 class="font-black text-2xl uppercase tracking-tighter group-hover:text-cyan transition-colors">${s.title}</h3>
-                        <span class="font-mono text-xl">↗</span>
+                        <h3 class="font-extrabold text-2xl uppercase tracking-tighter group-hover:bg-cyan group-hover:text-ink transition-colors">${s.title}${badgeHtml}</h3>
+                        <span class="font-mono text-xl group-hover:translate-x-[2px] group-hover:-translate-y-[2px] transition-transform">↗</span>
                     </div>
                     <p class="font-mono text-sm text-ink opacity-80 mb-4">${s.description}</p>
                     <div class="flex flex-wrap gap-2">
@@ -44,7 +46,7 @@ export async function renderPractice() {
     container.innerHTML = `
         <div class="mb-10">
             <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink mb-2 bg-cyan inline-block px-2 border-2 border-ink">SYS // TRAINING GROUNDS</p>
-            <h1 class="text-5xl sm:text-7xl font-black text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
+            <h1 class="text-5xl sm:text-7xl font-extrabold text-ink uppercase tracking-tighter leading-none border-b-4 border-ink pb-4">
                 Practice Arena<span class="inline-block w-4 h-[0.8em] bg-cyan animate-pulse align-middle ml-2 border-2 border-ink"></span>
             </h1>
         </div>
