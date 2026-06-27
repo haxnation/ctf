@@ -149,12 +149,15 @@ function renderLayout() {
 
 // Strip markdown bold/italic syntax so solutionTexts (which may contain **bold**)
 // can be compared against plain-text innerText captured from rendered HTML elements.
+// Uses word-boundary-aware patterns for * and _ so underscores inside identifiers
+// like DB_PROD_CUSTOMERS are preserved (only strips when the delimiter is not flanked
+// by word characters on both sides, i.e. true markdown delimiters).
 function stripMarkdown(text) {
     return text
         .replace(/\*\*(.*?)\*\*/g, '$1')
         .replace(/__(.*?)__/g, '$1')
-        .replace(/\*(.*?)\*/g, '$1')
-        .replace(/_(.*?)_/g, '$1');
+        .replace(/(?<!\w)\*(.*?)\*(?!\w)/g, '$1')
+        .replace(/(?<!\w)_(.*?)_(?!\w)/g, '$1');
 }
 
 window.updateProgress = function() {
