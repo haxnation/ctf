@@ -147,6 +147,16 @@ function renderLayout() {
     window.updateProgress();
 }
 
+// Strip markdown bold/italic syntax so solutionTexts (which may contain **bold**)
+// can be compared against plain-text innerText captured from rendered HTML elements.
+function stripMarkdown(text) {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/__(.*?)__/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/_(.*?)_/g, '$1');
+}
+
 window.updateProgress = function() {
     const progressEl = document.getElementById('global-progress');
     if (!progressEl) return;
@@ -170,9 +180,10 @@ window.updateProgress = function() {
                     const highlights = window.grcHighlights[fileKey] || [];
                     
                     f.solutionTexts.forEach(sol => {
+                        const plainSol = stripMarkdown(sol);
                         let found = false;
                         highlights.forEach(h => {
-                            if (h.includes(sol)) found = true;
+                            if (h.includes(plainSol)) found = true;
                         });
                         if (found) totalFound++;
                     });
@@ -472,9 +483,10 @@ function evaluateSubmission() {
                     const highlights = window.grcHighlights[fileKey] || [];
                     
                     f.solutionTexts.forEach(sol => {
+                        const plainSol = stripMarkdown(sol);
                         let found = false;
                         highlights.forEach(h => {
-                            if (h.includes(sol)) found = true;
+                            if (h.includes(plainSol)) found = true;
                         });
                         if (!found) {
                             allFound = false;
@@ -485,7 +497,8 @@ function evaluateSubmission() {
                     highlights.forEach(h => {
                         let matchesASolution = false;
                         f.solutionTexts.forEach(sol => {
-                            if (h.includes(sol)) matchesASolution = true;
+                            const plainSol = stripMarkdown(sol);
+                            if (h.includes(plainSol)) matchesASolution = true;
                         });
                         if (!matchesASolution) {
                             hasFalsePositives = true;
