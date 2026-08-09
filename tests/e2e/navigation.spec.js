@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('HaxNation CTF Platform Navigation', () => {
+test.describe('Haxnation CTF Platform Navigation', () => {
   
   test.beforeEach(async ({ page }) => {
     // Playwright now knows the baseURL from the config
@@ -8,7 +8,7 @@ test.describe('HaxNation CTF Platform Navigation', () => {
   });
 
   test('should display the main navigation tabs correctly', async ({ page }) => {
-    await expect(page).toHaveTitle(/HaxNation — CTF Platform/);
+    await expect(page).toHaveTitle(/Haxnation — CTF Platform/);
     
     const practiceTab = page.locator('#tab-practice');
     const competeTab = page.locator('#tab-compete');

@@ -1,7 +1,7 @@
 {
   "id": "compete-1",
   "title": "Operation Phantom Payroll",
-  "description": "A whistleblower has reported irregularities in HaxNation's contractor access management program. As the lead GRC auditor, investigate by cross-referencing the Contractor Access Policy, HR records, VPN logs, and financial invoices across multiple departments. Identify all policy violations and flag them in the interactive audit worksheets. Warning: Not everything that looks suspicious is a violation — read the full policy carefully, including the Amendment Log and Appendices.",
+  "description": "A whistleblower has reported irregularities in Haxnation's contractor access management program. As the lead GRC auditor, investigate by cross-referencing the Contractor Access Policy, HR records, VPN logs, and financial invoices across multiple departments. Identify all policy violations and flag them in the interactive audit worksheets. Warning: Not everything that looks suspicious is a violation — read the full policy carefully, including the Amendment Log and Appendices.",
   "compete": true,
   "departments": [
     {
