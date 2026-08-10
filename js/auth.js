@@ -47,7 +47,7 @@ export function updateAuthUI() {
 }
 
 export function login() {
-    const currentPath = window.location.pathname + window.location.search;
+    const currentPath = window.location.hash || '#/';
     window.location.href = `${API_BASE_URL}/auth/login?returnTo=${encodeURIComponent(currentPath)}`;
 }
 

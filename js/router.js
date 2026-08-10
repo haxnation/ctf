@@ -4,13 +4,16 @@ export function createRouter(appHandlers) {
             window.location.href = url;
             return;
         }
-        if (window.location.pathname === url) return;
-        window.history.pushState(null, null, url);
-        handleRoute();
+        const hashUrl = url.startsWith('#') ? url : '#' + url;
+        if (window.location.hash === hashUrl) return;
+        window.location.hash = hashUrl;
     };
 
     const handleRoute = async () => {
-        const path = window.location.pathname;
+        let path = window.location.hash.slice(1);
+        if (!path || path === '') {
+            path = '/';
+        }
 
         if (path.startsWith('/soc')) {
             // Attempt to explicitly request the index file if we got caught in the root SPA fallback
@@ -96,6 +99,7 @@ export function createRouter(appHandlers) {
         }
     });
 
+    window.addEventListener('hashchange', handleRoute);
     window.addEventListener('popstate', handleRoute);
 
     return { navigate, handleRoute };
