@@ -21,14 +21,19 @@ self.addEventListener('fetch', event => {
   if (event.request.url.includes('/api/')) return;
   
   event.respondWith(
-    caches.match(event.request).then(response => {
+    caches.match(event.request).then(cachedResponse => {
       const fetchPromise = fetch(event.request).then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
         }
         return networkResponse;
-      }).catch(() => {});
-      return response || fetchPromise;
+      }).catch(() => {
+        if (cachedResponse) return cachedResponse;
+        if (event.request.mode === 'navigate') return caches.match('/index.html');
+        return Response.error();
+      });
+      return cachedResponse || fetchPromise;
     })
   );
 });

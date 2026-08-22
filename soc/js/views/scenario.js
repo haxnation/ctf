@@ -134,7 +134,7 @@ export async function renderScenario(scenarioId) {
           <p class="font-mono text-xs text-ink leading-relaxed mb-4">
             <span class="font-bold">&gt; SCENARIO_STATUS:</span> ACTIVE<br />
             <span class="font-bold">&gt; TOTAL_ALERTS:</span> ${summary.totalAlerts}<br />
-            <span class="font-bold">&gt; TITLE:</span> ${summary.title}
+            <span class="font-bold">&gt; TITLE:</span> ${summary.scenario.title}
             <span class="block-cursor"></span>
           </p>
           <button id="btn-restart" class="btn-danger w-full !px-2 !py-2 !text-[10px] uppercase font-bold tracking-widest">RESTART SCENARIO</button>
