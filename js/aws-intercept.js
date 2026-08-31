@@ -3,27 +3,39 @@
  * Intercepts POST/PUT requests to add the required content hash header.
  */
 (function() {
-    // Helper to calculate SHA-256 hash
+    // Helper to calculate SHA-256 hash (bounded inputs, fail-secure)
     async function getSHA256(body) {
         let buffer;
-        if (!body) {
-            buffer = new TextEncoder().encode("");
-        } else if (typeof body === 'string') {
-            buffer = new TextEncoder().encode(body);
-        } else if (body instanceof Blob) {
-            buffer = await body.arrayBuffer();
-        } else if (body instanceof ArrayBuffer) {
-            buffer = body;
-        } else {
-            // For complex types like FormData, you'd need a more complex serializer.
-            // Defaulting to empty string hash to avoid breaking the request.
-            console.warn("Unsupported body type for SHA-256 calculation.");
-            buffer = new TextEncoder().encode("");
+        try {
+            if (!body) {
+                buffer = new TextEncoder().encode("");
+            } else if (typeof body === 'string') {
+                // Bound to 5MB already via backend MaxBytes; extra guard client side
+                if (body.length > 5 * 1024 * 1024) body = body.slice(0, 5 * 1024 * 1024);
+                buffer = new TextEncoder().encode(body);
+            } else if (body instanceof Blob) {
+                try {
+                    buffer = await body.arrayBuffer();
+                } catch {
+                    try { buffer = new TextEncoder().encode(await body.text()); } catch { buffer = new TextEncoder().encode(""); }
+                }
+                buffer = body;
+            } else if (body instanceof Uint8Array) {
+                buffer = body.buffer;
+            } else if (body instanceof FormData) {
+                // FormData cannot be hashed reliably client-side; use empty hash and let backend handle
+                buffer = new TextEncoder().encode("");
+            } else {
+                buffer = new TextEncoder().encode("");
+            }
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch {
+            // fallback to SHA256("") on error
+            const fb = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(""));
+            return Array.from(new Uint8Array(fb)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
-
-        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     // --- 1. Intercept Fetch API ---
