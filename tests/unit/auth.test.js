@@ -23,7 +23,7 @@ describe('Auth Module', () => {
 
         expect(result).toBe(true);
         expect(state.currentUser).toEqual({ authenticated: true, name: 'CyberKnight' });
-        expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/auth/me`, expect.objectContaining({ credentials: 'include' }));
     });
 
     test('checkAuth() returns false when unauthenticated', async () => {

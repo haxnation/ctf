@@ -1,4 +1,4 @@
-import { API_BASE_URL, state } from './config.js';
+import { API_BASE_URL, state, isSafeUrl } from './config.js';
 import { checkAuth, login, logout, updateAuthUI } from './auth.js';
 import { createRouter } from './router.js';
 
@@ -12,6 +12,28 @@ window.currentChallengesList = null;
 let dataLoaded = false;
 
 const CTF_STATIC_API = 'https://a-y-u-s-h-y-a.github.io/project-haxnation/api'; 
+
+export function safeHref(url, fallback = '#') {
+    if (!url || typeof url !== 'string') return fallback;
+    return isSafeUrl(url) ? url : fallback;
+}
+export function isHexAddress(s) {
+    return typeof s === 'string' && /^0x[a-fA-F0-9]{40}$/.test(s);
+}
+export async function fetchJson(url, opts = {}) {
+    const res = await fetch(url, opts);
+    let data = null;
+    try { data = await res.json(); } catch { data = null; }
+    return { res, data };
+}
+export function showRateLimitError(statusEl, res) {
+    const retry = res.headers.get('Retry-After') || '60';
+    if (statusEl) {
+        statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
+        statusEl.innerText = `> ERR: RATE LIMITED. RETRY AFTER ${retry}S`;
+    }
+    window.showToast('error', `Too many requests. Retry after ${retry}s`);
+}
 
 const appHandlers = {
     switchTab,
@@ -251,9 +273,9 @@ function handleSearchInput(e) {
             suggestionsBox.innerHTML = searchResults.map(res => {
                 const chal = window.allChallenges.find(c => c.id === res.id);
                 if(!chal) return '';
-                const safeId = DOMPurify.sanitize(String(chal.id));
                 const safeName = DOMPurify.sanitize(chal.name);
-                return `<button class="w-full text-left font-mono text-xs font-bold uppercase tracking-widest p-3 border-b-2 border-transparent hover:border-ink hover:bg-ink hover:text-white transition-colors duration-0 truncate" onclick="window.selectSuggestion('${safeId}')">> ${safeName}</button>`;
+                const safeIdAttr = DOMPurify.sanitize(String(chal.id));
+                return `<button data-suggest-id="${safeIdAttr}" class="suggest-btn w-full text-left font-mono text-xs font-bold uppercase tracking-widest p-3 border-b-2 border-transparent hover:border-ink hover:bg-ink hover:text-white transition-colors duration-0 truncate">> ${safeName}</button>`;
             }).join('');
             suggestionsBox.classList.remove('hidden');
         } else {
@@ -262,9 +284,9 @@ function handleSearchInput(e) {
                     <p class="font-mono text-xs font-bold uppercase text-danger mb-2">> 0 MATCHES FOUND</p>
                     <p class="font-sans text-sm text-ink mb-2">Try related terms to find targets:</p>
                     <div class="flex gap-2 justify-center">
-                        <button onclick="document.getElementById('searchBar').value='Web'; window.applyFilters();" class="font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Web</button>
-                        <button onclick="document.getElementById('searchBar').value='Crypto'; window.applyFilters();" class="font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Crypto</button>
-                        <button onclick="document.getElementById('searchBar').value='Pwn'; window.applyFilters();" class="font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Pwn</button>
+                        <button data-quick-search="Web" class="quick-search-btn font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Web</button>
+                        <button data-quick-search="Crypto" class="quick-search-btn font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Crypto</button>
+                        <button data-quick-search="Pwn" class="quick-search-btn font-mono text-[10px] uppercase font-bold bg-white text-ink border-2 border-ink px-2 py-1 shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan">Pwn</button>
                     </div>
                 </div>
             `;
@@ -298,6 +320,38 @@ function setupListeners() {
         if (!e.target.closest('#searchBar') && !e.target.closest('#searchSuggestions')) {
             document.getElementById('searchSuggestions')?.classList.add('hidden');
         }
+        // delegated: suggestion pick
+        const suggestBtn = e.target.closest('[data-suggest-id]');
+        if (suggestBtn) { e.preventDefault(); selectSuggestion(suggestBtn.getAttribute('data-suggest-id')); }
+        const quickBtn = e.target.closest('[data-quick-search]');
+        if (quickBtn) { const q = quickBtn.getAttribute('data-quick-search'); const sb = document.getElementById('searchBar'); if (sb) { sb.value = q; applyFilters(); } }
+        const loginBtn = e.target.closest('[data-action="login"]');
+        if (loginBtn) { e.preventDefault(); login(); }
+        const retryEvents = e.target.closest('[data-retry="events"]');
+        if (retryEvents) { e.preventDefault(); loadLiveEvents(); }
+        const retryInd = e.target.closest('[data-retry="independent"]');
+        if (retryInd) { e.preventDefault(); loadIndependentChallenges(); }
+        const retryEvent = e.target.closest('[data-retry-event]');
+        if (retryEvent) { e.preventDefault(); openEvent(retryEvent.getAttribute('data-retry-event'), retryEvent.getAttribute('data-event-name')||''); }
+        const eventCard = e.target.closest('.event-card[data-event-id]');
+        if (eventCard && !e.target.closest('a')) { e.preventDefault(); openEvent(eventCard.getAttribute('data-event-id'), eventCard.getAttribute('data-event-name')); }
+        const hintBtn = e.target.closest('[data-hint-idx]');
+        if (hintBtn) { e.preventDefault(); toggleHint(hintBtn.getAttribute('data-hint-idx')); }
+        const retryBtn2 = e.target.closest('.retry-btn');
+        if (retryBtn2 && !retryBtn2.hasAttribute('data-retry')) {
+            // fallback for any retry that maps to events
+            if (retryBtn2.textContent.includes('Connection')) loadLiveEvents();
+        }
+        const switchPrac = e.target.closest('[data-action="switch-practice-challenges"]');
+        if (switchPrac) { e.preventDefault(); if (window.router) window.router.navigate('/ctf/practice/challenges'); else { switchTab('practice'); switchPracticeView('challenges'); } }
+        const showEvents = e.target.closest('[data-action="show-events-list"]');
+        if (showEvents) { e.preventDefault(); showEventsList(); }
+        const showLb = e.target.closest('[data-action="show-leaderboard"]');
+        if (showLb) { e.preventDefault(); showLeaderboard(); }
+        const hideLb = e.target.closest('[data-action="hide-leaderboard"]');
+        if (hideLb) { e.preventDefault(); hideLeaderboard(); }
+        const histBack = e.target.closest('[data-action="history-back"]');
+        if (histBack) { e.preventDefault(); window.history.back(); }
     });
 
     const flagInput = document.getElementById('flagInput');
@@ -310,10 +364,12 @@ function setupListeners() {
         
         flagInput.addEventListener('input', (e) => {
             const val = e.target.value;
+            if (val.length > 2048) e.target.value = val.slice(0,2048);
+            const curLen = e.target.value.length;
             if (charCount) {
-                if (val.length >= 50) {
+                if (curLen >= 50) {
                     charCount.classList.remove('hidden');
-                    charCount.innerText = `${val.length}/100`;
+                    charCount.innerText = `${curLen}/2048`;
                 } else {
                     charCount.classList.add('hidden');
                 }
@@ -344,18 +400,23 @@ function setupListeners() {
     }
 
     // ==========================================
-    // STANDARD CTF FLAG SUBMISSION
+    // STANDARD CTF FLAG SUBMISSION (with rate-limit & maxAttempts awareness)
     // ==========================================
     document.getElementById('submitFlagBtn')?.addEventListener('click', async (e) => {
         const btn = e.target.closest('button');
         const origTxt = btn.innerText;
         btn.innerText = 'EXECUTING...';
         btn.disabled = true;
-        if (!window.currentChallengeData) return;
+        if (!window.currentChallengeData) { btn.innerText = origTxt; btn.disabled = false; return; }
         
-        const userInput = document.getElementById('flagInput').value.trim();
+        let userInput = document.getElementById('flagInput').value.trim();
         const statusEl = document.getElementById('flagStatus');
-        if (!userInput) return;
+        if (!userInput) { btn.innerText = origTxt; btn.disabled = false; return; }
+        if (userInput.length > 2048) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: FLAG TOO LONG (MAX 2048)";
+            btn.innerText = origTxt; btn.disabled = false; return;
+        }
 
         if (window.currentMode === 'practice-challenges') {
              if (window.currentChallengeData.flags && window.currentChallengeData.flags.includes(userInput)) {
@@ -365,32 +426,35 @@ function setupListeners() {
 
                 if (state.currentUser) {
                     try {
-                        const res = await fetch(`${API_BASE_URL}/practice/${window.currentChallengeData.id}/record-solve`, {
+                        const { res, data } = await fetchJson(`${API_BASE_URL}/practice/${window.currentChallengeData.id}/record-solve`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include'
+                            credentials: 'include',
+                            body: JSON.stringify({})
                         });
-                        const data = await res.json();
-
-                        if (data.success || data.alreadySolved) {
+                        if (res.status === 429) { showRateLimitError(statusEl, res); btn.innerText = origTxt; btn.disabled = false; return; }
+                        if (data && (data.success || data.alreadySolved)) {
                             if (data.alreadySolved) {
                                 await syncPracticeSolvesFromServer();
                             } else {
                                 const cachedDataRaw = localStorage.getItem('practice_solves_data');
                                 if (cachedDataRaw) {
-                                    const cachedData = JSON.parse(cachedDataRaw);
-                                    if (!cachedData.solves.includes(window.currentChallengeData.id)) {
-                                        cachedData.solves.push(window.currentChallengeData.id);
-                                        localStorage.setItem('practice_solves_data', JSON.stringify(cachedData));
-                                    }
+                                    try {
+                                        const cachedData = JSON.parse(cachedDataRaw);
+                                        if (!cachedData.solves.includes(window.currentChallengeData.id)) {
+                                            cachedData.solves.push(window.currentChallengeData.id);
+                                            localStorage.setItem('practice_solves_data', JSON.stringify(cachedData));
+                                        }
+                                    } catch {}
                                 }
                             }
                             statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-success inline-block px-2 border-2 border-ink';
                             statusEl.innerText = "> ✓ VERIFIED & RECORDED";
                             applyFilters(); 
                         } else {
+                            const msg = data && (data.message || data.error) ? DOMPurify.sanitize(String(data.message || data.error)) : 'SYSTEM FAULT';
                             statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                            statusEl.innerText = `> ERR: SYSTEM FAULT. VERIFICATION FAILED. RETRY LATER.`;
+                            statusEl.innerText = `> ERR: ${msg.toUpperCase()}`;
                         }
                     } catch (err) {
                         statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
@@ -412,33 +476,39 @@ function setupListeners() {
                 statusEl.innerText = "> VERIFYING_SIGNATURE...";
 
                 const endpointUrl = window.currentMode === 'compete-event' 
-                    ? `${API_BASE_URL}/events/${window.activeEventId}/challenges/${window.currentChallengeData.id}/submit`
-                    : `${API_BASE_URL}/challenges/${window.currentChallengeData.id}/submit`;
+                    ? `${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/challenges/${encodeURIComponent(window.currentChallengeData.id)}/submit`
+                    : `${API_BASE_URL}/challenges/${encodeURIComponent(window.currentChallengeData.id)}/submit`;
 
-                const res = await fetch(endpointUrl, {
+                const { res, data } = await fetchJson(endpointUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ flag: userInput })
                 });
 
-                const data = await res.json();
-                
-                if (data.success) {
-                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-success inline-block px-2 border-2 border-ink';
-                    statusEl.innerText = `> ✓ SUCCESS: +${data.points} PTS`;
-                } else {
+                if (res.status === 429) { showRateLimitError(statusEl, res); btn.innerText = origTxt; btn.disabled = false; return; }
+                if (res.status === 403 && data && data.error && String(data.error).toLowerCase().includes('maximum attempts')) {
                     statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
-                    statusEl.innerText = `> ERR: SYSTEM FAULT. VERIFICATION FAILED. RETRY LATER.`;
+                    statusEl.innerText = `> ERR: MAX ATTEMPTS EXCEEDED${data.maxAttempts ? ' ('+data.maxAttempts+')' : ''}`;
+                    btn.innerText = origTxt; btn.disabled = false; return;
+                }
+                if (data && data.success) {
+                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-ink bg-success inline-block px-2 border-2 border-ink';
+                    statusEl.innerText = `> ✓ SUCCESS: +${DOMPurify.sanitize(String(data.points))} PTS`;
+                } else {
+                    const msg = data && (data.message || data.error) ? String(data.message || data.error) : 'VERIFICATION FAILED';
+                    const sanitized = DOMPurify.sanitize(msg);
+                    statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
+                    statusEl.innerText = `> ERR: ${sanitized.toUpperCase().slice(0,120)}`;
                 }
                 btn.innerText = origTxt;
                 btn.disabled = false;
             } catch (err) {
                 statusEl.className = 'mt-4 font-mono text-sm font-bold h-6 uppercase tracking-widest text-white bg-danger inline-block px-2 border-2 border-ink';
                 statusEl.innerText = "> ERR: NETWORK FAULT. CHECK CONNECTION. RETRY LATER.";
+                btn.innerText = origTxt;
+                btn.disabled = false;
             }
-            btn.innerText = origTxt;
-            btn.disabled = false;
         }
     });
 
@@ -491,7 +561,16 @@ function setupListeners() {
             return;
         }
 
-        if (!userWallet) return;
+        if (!userWallet) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: CONNECT WALLET FIRST";
+            return;
+        }
+        if (!isHexAddress(userWallet)) {
+            statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
+            statusEl.innerText = "> ERR: INVALID WALLET ADDRESS";
+            return;
+        }
 
         try {
             statusEl.className = 'mt-4 font-mono text-sm font-bold text-ink bg-canvas border-2 border-ink inline-block px-2 animate-pulse';
@@ -499,16 +578,18 @@ function setupListeners() {
 
             const provider = new ethers.BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
-            const message = `Haxnation_Auth_${state.currentUser.user_id}`;
+            // Must match backend: HaxNation_Auth_<userID> (case sensitive)
+            const uid = state.currentUser.user_id || state.currentUser.userId || state.currentUser.sub || '';
+            const message = `HaxNation_Auth_${uid}`;
             const signature = await signer.signMessage(message);
 
             statusEl.innerText = "> QUERYING_BLOCKCHAIN...";
 
             const endpointUrl = window.currentMode === 'compete-event' 
-                ? `${API_BASE_URL}/events/${window.activeEventId}/challenges/${window.currentChallengeData.id}/submit-web3`
-                : `${API_BASE_URL}/challenges/${window.currentChallengeData.id}/submit-web3`;
+                ? `${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/challenges/${encodeURIComponent(window.currentChallengeData.id)}/submit-web3`
+                : `${API_BASE_URL}/challenges/${encodeURIComponent(window.currentChallengeData.id)}/submit-web3`;
 
-            const res = await fetch(endpointUrl, {
+            const { res, data } = await fetchJson(endpointUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -518,20 +599,108 @@ function setupListeners() {
                 })
             });
 
-            const data = await res.json();
-            
-            if (data.success) {
+            if (res.status === 429) { showRateLimitError(statusEl, res); return; }
+            if (data && data.success) {
                 statusEl.className = 'mt-4 font-mono text-sm font-bold text-ink bg-success inline-block px-2 border-2 border-ink';
-                statusEl.innerText = `> ✓ SUCCESS: +${data.points} PTS`;
+                statusEl.innerText = `> ✓ SUCCESS: +${DOMPurify.sanitize(String(data.points))} PTS`;
             } else {
+                const msg = data && (data.message || data.error) ? String(data.message || data.error) : 'VERIFICATION FAILED';
                 statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
-                statusEl.innerText = `> ERR: SYSTEM FAULT. VERIFICATION FAILED. RETRY LATER.`;
+                statusEl.innerText = `> ERR: ${DOMPurify.sanitize(msg).toUpperCase().slice(0,140)}`;
             }
         } catch (err) {
             statusEl.className = 'mt-4 font-mono text-sm font-bold text-white bg-danger inline-block px-2 border-2 border-ink';
-            statusEl.innerText = "> ERR: NETWORK FAULT. CHECK CONNECTION. RETRY LATER.";
+            statusEl.innerText = "> ERR: WALLET/NETWORK FAULT. RETRY.";
         }
     });
+
+    // ==========================================
+    // ADMIN: AWARDS & EXPORT/IMPORT helpers (accommodates new backend)
+    // ==========================================
+    async function loadAwards() {
+        if (!window.activeEventId) return;
+        const list = document.getElementById('admin-awards-list');
+        if (!list) return;
+        try {
+            const { data } = await fetchJson(`${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/awards`, { credentials: 'include' });
+            if (data && data.success && Array.isArray(data.awards)) {
+                if (data.awards.length === 0) { list.innerHTML = '<p class="text-gray-500">> NO AWARDS</p>'; return; }
+                list.innerHTML = data.awards.map(a => {
+                    const saId = DOMPurify.sanitize(String(a.id || a.ID || ''));
+                    const saUser = DOMPurify.sanitize(String(a.userId || a.UserID || ''));
+                    const saPts = DOMPurify.sanitize(String(a.points || 0));
+                    const saReason = DOMPurify.sanitize(String(a.reason || a.Reason || ''));
+                    return `<div class="flex justify-between items-center border-2 border-ink bg-canvas px-3 py-2"><span>${saUser} +${saPts} ${saReason}</span><button data-award-del="${saId}" class="award-del bg-danger text-white px-2 py-1 border border-ink">DEL</button></div>`;
+                }).join('');
+            }
+        } catch {}
+    }
+    async function tryShowAdminPanel() {
+        const panel = document.getElementById('admin-panel');
+        if (!panel || !state.currentUser || !window.activeEventId) return;
+        // Probe: if awards list succeeds without 403, user likely admin; or if /me role=admin
+        const isAdminHint = state.currentUser.role === 'admin' || String(state.currentUser.email || '').toLowerCase().includes('admin');
+        // try fetch awards; if 403 hidden, keep panel hidden unless role hint
+        try {
+            const res = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/awards`, { credentials: 'include' });
+            if (res.ok || isAdminHint) {
+                panel.classList.remove('hidden');
+                await loadAwards();
+            }
+        } catch { if (isAdminHint) panel.classList.remove('hidden'); }
+    }
+    document.getElementById('award-create-btn')?.addEventListener('click', async () => {
+        const status = document.getElementById('admin-status');
+        const uid = document.getElementById('award-userId').value.trim().slice(0,256);
+        const pts = parseInt(document.getElementById('award-points').value, 10);
+        const reason = document.getElementById('award-reason').value.trim().slice(0,256);
+        if (!uid || !pts) { if(status) status.innerText = '> ERR: USERID & POINTS REQUIRED'; return; }
+        if (isNaN(pts) || pts === 0) { if(status) status.innerText = '> ERR: NON-ZERO POINTS REQUIRED'; return; }
+        try {
+            const { res, data } = await fetchJson(`${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/awards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ userId: uid, points: pts, reason }) });
+            if (res.status === 403) { if(status) status.innerText = '> ERR: ADMIN ONLY'; return; }
+            if (data && data.success) { if(status) status.innerText = '> AWARD GRANTED'; await loadAwards(); }
+            else { if(status) status.innerText = `> ERR: ${DOMPurify.sanitize(String(data.error||'FAILED')).slice(0,80)}`; }
+        } catch { if(status) status.innerText = '> ERR: NETWORK'; }
+    });
+    document.getElementById('admin-awards-list')?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-award-del]');
+        if (!btn) return;
+        const awardId = btn.getAttribute('data-award-del');
+        try {
+            const { res } = await fetchJson(`${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/awards/${encodeURIComponent(awardId)}`, { method: 'DELETE', credentials: 'include' });
+            if (res.ok) await loadAwards();
+        } catch {}
+    });
+    document.getElementById('admin-export-btn')?.addEventListener('click', async () => {
+        const status = document.getElementById('admin-status');
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/export`, { credentials: 'include' });
+            if (res.status === 403) { if(status) status.innerText = '> ERR: ADMIN ONLY'; return; }
+            const data = await res.json();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `ctf-export-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+            if(status) status.innerText = '> EXPORTED';
+        } catch { if(status) status.innerText = '> ERR: EXPORT FAILED'; }
+    });
+    document.getElementById('admin-import-file')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        const status = document.getElementById('admin-status');
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            if (json.events && !Array.isArray(json.events)) throw new Error('invalid');
+            const { res, data } = await fetchJson(`${API_BASE_URL}/admin/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(json) });
+            if (res.status === 403) { if(status) status.innerText = '> ERR: ADMIN ONLY'; return; }
+            if (data && data.success) if(status) status.innerText = `> IMPORTED ${DOMPurify.sanitize(String(data.imported?.events||0))} EVENTS`;
+            else if(status) status.innerText = `> ERR: ${DOMPurify.sanitize(String(data.error||'IMPORT FAILED')).slice(0,80)}`;
+        } catch { if(status) status.innerText = '> ERR: INVALID JSON'; }
+        e.target.value='';
+    });
+    // expose for openEvent caller
+    window.tryShowAdminPanel = tryShowAdminPanel;
+    window.loadAwards = loadAwards;
 }
 
 // ==========================================
@@ -610,7 +779,7 @@ async function loadLiveEvents() {
         eventsList.innerHTML = `
             <div class="bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center">
                 <p class="font-mono text-xl font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-6 shadow-[4px_4px_0_0_#0b0b0b]">CLEARANCE REQUIRED</p><br/>
-                <button onclick="window.login()" class="font-mono uppercase tracking-widest font-bold bg-ink text-white border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] transition-all duration-75">Execute Auth</button>
+                <button data-action="login" class="login-btn font-mono uppercase tracking-widest font-bold bg-ink text-white border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] transition-all duration-75">Execute Auth</button>
             </div>`;
         return;
     }
@@ -629,22 +798,22 @@ async function loadLiveEvents() {
                 const safeEvName = DOMPurify.sanitize(ev.name || '');
                 const safeEvDesc = DOMPurify.sanitize(ev.description || 'Active operational environment.');
                 const safeBadgeText = DOMPurify.sanitize(ev.isPlayable ? '● LIVE' : (ev.reason || 'OFFLINE'));
-                const safeRegLink = DOMPurify.sanitize(ev.registrationLink || '');
+                const safeRegLink = safeHref(ev.registrationLink || '', '');
 
                 // If the user isn't allowed to play, strip the hover effects and interactive behaviors
                 const cardStyle = ev.isPlayable 
                     ? 'hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_#0b0b0b] hover:bg-ink hover:text-white cursor-pointer group' 
                     : 'opacity-70 grayscale';
                 
-                const onClickAttr = ev.isPlayable ? `onclick="window.openEvent('${safeEvId}', '${safeEvName}')"` : '';
+                const dataAttrs = ev.isPlayable ? `data-event-id="${safeEvId}" data-event-name="${safeEvName}"` : '';
 
                 // Generate the aggressive neo-brutalist registration action if they are missing required access
                 const regButton = (!ev.isRegistered && safeRegLink) 
-                    ? `<a href="${safeRegLink}" target="_blank" class="mt-4 font-mono text-[10px] uppercase tracking-widest font-bold bg-danger text-white border-2 border-ink px-4 py-2 shadow-[2px_2px_0_0_#0b0b0b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_0_#0b0b0b] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none inline-block text-center transition-all duration-75">Initiate Registration</a>`
+                    ? `<a href="${safeRegLink}" target="_blank" rel="noopener noreferrer" class="mt-4 font-mono text-[10px] uppercase tracking-widest font-bold bg-danger text-white border-2 border-ink px-4 py-2 shadow-[2px_2px_0_0_#0b0b0b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_0_#0b0b0b] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none inline-block text-center transition-all duration-75">Initiate Registration</a>`
                     : '';
 
                 return `
-                <div class="bg-white border-2 border-ink p-6 rounded-none shadow-[6px_6px_0_0_#0b0b0b] transition-all duration-75 flex flex-col ${cardStyle}" ${onClickAttr}>
+                <div class="bg-white border-2 border-ink p-6 rounded-none shadow-[6px_6px_0_0_#0b0b0b] transition-all duration-75 flex flex-col ${cardStyle} event-card" ${dataAttrs}>
                     <div class="flex justify-between items-start mb-4 border-b-2 border-ink ${ev.isPlayable ? 'group-hover:border-white' : ''} pb-2 gap-2">
                         <h3 class="font-black text-2xl uppercase tracking-tighter">${safeEvName}</h3>
                         <span class="border-2 border-ink px-2 py-1 font-mono text-[10px] whitespace-nowrap font-bold uppercase shadow-[2px_2px_0_0_#0b0b0b] ${ev.isPlayable ? 'group-hover:shadow-[2px_2px_0_0_#0b0b0b] group-hover:border-white' : ''} ${badgeColor}">${safeBadgeText}</span>
@@ -660,7 +829,7 @@ async function loadLiveEvents() {
         eventsList.innerHTML = `<div class="bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center">
             <p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-4">> ERROR: COULD NOT LOAD OPERATIONS</p>
             <p class="font-mono text-sm text-ink mb-4">The connection to the command server was interrupted.</p>
-            <button onclick="window.showEventsList()" class="font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Connection</button>
+            <button data-retry="events" class="retry-btn font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Connection</button>
         </div>`;
     }
 }
@@ -669,15 +838,15 @@ async function loadIndependentChallenges() {
     const grid = document.getElementById('compete-independent-grid');
     
     if (!state.currentUser) {
-        grid.innerHTML = `<div class="col-span-full bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center"><p class="font-mono text-xl font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-6 shadow-[4px_4px_0_0_#0b0b0b]">CLEARANCE REQUIRED</p><br/><button onclick="window.login()" class="font-mono uppercase tracking-widest font-bold bg-ink text-white border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] transition-all duration-75">Execute Auth</button></div>`;
+        grid.innerHTML = `<div class="col-span-full bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-16 text-center"><p class="font-mono text-xl font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-6 shadow-[4px_4px_0_0_#0b0b0b]">CLEARANCE REQUIRED</p><br/><button data-action="login" class="login-btn font-mono uppercase tracking-widest font-bold bg-ink text-white border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] transition-all duration-75">Execute Auth</button></div>`;
         return;
     }
 
     grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-ink animate-pulse">> FETCHING TARGETS...</p></div>`;
 
     try {
-        const res = await fetch(`${API_BASE_URL}/challenges`, { credentials: 'include' });
-        const data = await res.json();
+        const { res, data } = await fetchJson(`${API_BASE_URL}/challenges`, { credentials: 'include' });
+        if (res.status === 429) { grid.innerHTML = `<div class="col-span-full py-8 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink">> RATE LIMITED. RETRY AFTER ${DOMPurify.sanitize(res.headers.get('Retry-After')||'60')}S</p></div>`; return; }
 
         if (!data.success) throw new Error(data.error);
         if (data.challenges.length === 0) {
@@ -691,31 +860,35 @@ async function loadIndependentChallenges() {
         grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
             <p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-4">> ERROR: OPERATION UNAVAILABLE</p>
             <p class="font-mono text-sm text-ink mb-4">A network error prevented the operation data from loading.</p>
-            <button onclick="window.openEvent('${eventId}', '${eventName}')" class="font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Operation</button>
+            <button data-retry="independent" class="retry-btn font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Operation</button>
         </div>`;
     }
 }
 
 async function openEvent(eventId, eventName) {
-    window.activeEventId = eventId;
+    const sid = String(eventId || '').slice(0,128);
+    window.activeEventId = sid;
     document.getElementById('compete-events-list').classList.add('hidden');
     document.getElementById('compete-event-dashboard').classList.remove('hidden');
-    document.getElementById('compete-event-title').innerText = eventName || "LIVE OPERATION";
+    document.getElementById('compete-event-title').innerText = DOMPurify.sanitize(eventName || "LIVE OPERATION");
     
     const grid = document.getElementById('compete-event-challenges-grid');
     grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-ink animate-pulse">> AUTHORIZING ACCESS...</p></div>`;
+    // hide admin until proven admin
+    document.getElementById('admin-panel')?.classList.add('hidden');
 
     try {
-        const res = await fetch(`${API_BASE_URL}/events/${eventId}/challenges`, { credentials: 'include' });
-        const data = await res.json();
+        const { res, data } = await fetchJson(`${API_BASE_URL}/events/${encodeURIComponent(sid)}/challenges`, { credentials: 'include' });
+        if (res.status === 429) { grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink">> RATE LIMITED. RETRY AFTER ${DOMPurify.sanitize(res.headers.get('Retry-After')||'60')}S</p></div>`; return; }
 
         if (!res.ok || !data.success) {
-            if (data.notAuthorized) {
+            if (data && data.notAuthorized) {
                 const safeError = DOMPurify.sanitize(data.error || '');
-                const safeRegLink = DOMPurify.sanitize(data.registrationLink || '');
-                grid.innerHTML = `<div class="col-span-full bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-10 text-center"><h3 class="font-black text-3xl uppercase tracking-tighter text-danger mb-4">ACCESS DENIED</h3><p class="font-mono text-sm mb-6">${safeError}</p><a href="${safeRegLink}" target="_blank" class="font-mono uppercase tracking-widest font-bold bg-danger text-white border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] inline-block hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] transition-all duration-75">Initiate Override Protocol</a></div>`;
+                const safeRegLink = safeHref(data.registrationLink || '', '');
+                const regBtn = safeRegLink ? `<a href="${safeRegLink}" target="_blank" rel="noopener noreferrer" class="font-mono uppercase tracking-widest font-bold bg-danger text-white border-2 border-ink px-8 py-3 shadow-[4px_4px_0_0_#0b0b0b] inline-block hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] transition-all duration-75">Initiate Override Protocol</a>` : '';
+                grid.innerHTML = `<div class="col-span-full bg-white border-4 border-ink shadow-[8px_8px_0_0_#0b0b0b] p-10 text-center"><h3 class="font-black text-3xl uppercase tracking-tighter text-danger mb-4">ACCESS DENIED</h3><p class="font-mono text-sm mb-6">${safeError}</p>${regBtn}</div>`;
             } else {
-                const safeErrorMsg = DOMPurify.sanitize(data.error || 'FAILED TO LOAD');
+                const safeErrorMsg = DOMPurify.sanitize((data && (data.error||data.message)) || 'FAILED TO LOAD');
                 grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]"><p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink">> ${safeErrorMsg}</p></div>`;
             }
             return;
@@ -728,11 +901,15 @@ async function openEvent(eventId, eventName) {
 
         window.currentChallengesList = data.challenges; 
         grid.innerHTML = data.challenges.map(chal => renderCompeteCard(chal, data.solved, 'compete-event')).join('');
+        // surface admin panel if applicable
+        if (window.tryShowAdminPanel) window.tryShowAdminPanel();
     } catch (err) {
+        const safeId = DOMPurify.sanitize(sid);
+        const safeName = DOMPurify.sanitize(eventName || '');
         grid.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b]">
             <p class="font-mono text-sm font-bold uppercase tracking-widest text-white bg-danger inline-block px-4 py-2 border-2 border-ink mb-4">> ERROR: OPERATION UNAVAILABLE</p>
             <p class="font-mono text-sm text-ink mb-4">A network error prevented the operation data from loading.</p>
-            <button onclick="window.openEvent('${eventId}', '${eventName}')" class="font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Operation</button>
+            <button data-retry-event="${safeId}" data-event-name="${safeName}" class="retry-event-btn font-mono text-xs font-bold uppercase bg-cyan text-ink border-2 border-ink px-4 py-2 hover:translate-x-[2px] hover:translate-y-[2px] shadow-[2px_2px_0_0_#0b0b0b] transition-all">Retry Operation</button>
         </div>`;
     }
 }
@@ -772,7 +949,7 @@ async function renderPracticeGrid(data) {
     }
 }
 
-function renderPracticeCard(chal, solvedIds) {
+export function renderPracticeCard(chal, solvedIds) {
     const isSolved = solvedIds.includes(chal.id);
 
     let diffColorClass = 'bg-canvas text-ink';
@@ -806,7 +983,7 @@ function renderPracticeCard(chal, solvedIds) {
     </a>`;
 }
 
-function renderCompeteCard(chal, solvedList, mode) {
+export function renderCompeteCard(chal, solvedList, mode) {
     const isSolved = solvedList.includes(chal.id);
     const isArchived = chal.state === 'archived'; 
     
@@ -824,15 +1001,17 @@ function renderCompeteCard(chal, solvedList, mode) {
     if (isSolved) pointsDisplay = 'SOLVED';
     else if (isArchived) pointsDisplay = 'EXPIRED';
 
-    let href = `/ctf/challenge/compete/${chal.id}`;
+    let href = `/ctf/challenge/compete/${encodeURIComponent(chal.id)}`;
     if (mode === 'compete-event') {
-        href = `/ctf/challenge/event/${window.activeEventId}/${chal.id}`;
+        href = `/ctf/challenge/event/${encodeURIComponent(window.activeEventId)}/${encodeURIComponent(chal.id)}`;
     }
 
     const safeName = DOMPurify.sanitize(chal.name || '');
     const safeCat = DOMPurify.sanitize(Array.isArray(chal.category) ? chal.category.join(', ') : (chal.category || 'General'));
     const safeDiff = DOMPurify.sanitize(chal.difficulty || 'Unknown');
     const safePointsDisplay = DOMPurify.sanitize(pointsDisplay);
+    const attemptsBadge = chal.maxAttempts ? `<span class="border-2 border-ink bg-warning text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">MAX ${DOMPurify.sanitize(String(chal.maxAttempts))}</span>` : '';
+    const flagTypeBadge = chal.flagType && chal.flagType !== 'static' ? `<span class="border-2 border-ink bg-canvas text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">${DOMPurify.sanitize(String(chal.flagType).toUpperCase())}</span>` : '';
 
     return `
     <a href="${href}" data-nav class="border-2 border-ink bg-white p-5 rounded-none shadow-[4px_4px_0_0_#0b0b0b] transition-all duration-75 flex flex-col cursor-pointer group block text-left ${statusStyle}">
@@ -843,6 +1022,7 @@ function renderCompeteCard(chal, solvedList, mode) {
         <div class="flex flex-wrap gap-2 mb-2">
             <span class="border-2 border-ink bg-white text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">${safeCat}</span>
             <span class="border-2 border-ink bg-canvas text-ink px-2 py-1 font-mono text-[10px] font-bold uppercase group-hover:border-white shadow-[2px_2px_0_0_#0b0b0b]">${safeDiff}</span>
+            ${attemptsBadge}${flagTypeBadge}
         </div>
     </a>`;
 }
@@ -930,15 +1110,22 @@ async function openChallenge(id, mode) {
             }
         }
 
-        // Always show author
-        const authors = chal.authors ? chal.authors.map(a => `<a href="${DOMPurify.sanitize(a.url)}" target="_blank" class="hover:underline hover:text-cyan">${DOMPurify.sanitize(a.name)}</a>`).join(', ') : 'UNKNOWN';
-        document.getElementById('det-author').innerHTML = DOMPurify.sanitize(`AUTH: ${authors}`);
+        // Always show author (validate URLs to prevent javascript: XSS)
+        const authors = chal.authors ? chal.authors.map(a => {
+            const name = DOMPurify.sanitize(String(a.name || a));
+            const url = a.url ? safeHref(String(a.url), '') : '';
+            return url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="hover:underline hover:text-cyan">${name}</a>` : name;
+        }).join(', ') : 'UNKNOWN';
+        // authors already sanitized fragments; sanitize wrapper
+        const authorsSanitized = DOMPurify.sanitize(`AUTH: ${authors}`, { ADD_ATTR: ['target','rel'] });
+        document.getElementById('det-author').innerHTML = authorsSanitized;
         
-        // Always show points (Practice challenges might have 0 points, which is fine)
-        document.getElementById('det-points').innerText = `PTS: ${chal.points || 0}`;
+        // Always show points + maxAttempts if present
+        const ptsText = `PTS: ${chal.points || 0}` + (chal.maxAttempts ? ` | MAX ${chal.maxAttempts}` : '');
+        document.getElementById('det-points').innerText = ptsText;
 
         // Web3 Check & UI Override
-        const isWeb3 = chal.category && (Array.isArray(chal.category) ? chal.category.some(c => c.toLowerCase() === 'web3') : chal.category.toLowerCase() === 'web3');
+        const isWeb3 = chal.category && (Array.isArray(chal.category) ? chal.category.some(c => String(c).toLowerCase() === 'web3') : String(chal.category).toLowerCase() === 'web3');
         const flagInput = document.getElementById('flagInput');
         const submitFlagBtn = document.getElementById('submitFlagBtn');
         const connectWalletBtn = document.getElementById('connectWalletBtn');
@@ -974,14 +1161,15 @@ async function openChallenge(id, mode) {
         const assetsDiv = document.getElementById('det-assets');
         if (chal.assets && chal.assets.length > 0) {
             assetsDiv.innerHTML = chal.assets.map(asset => {
-                let downloadUrl = asset;
+                let downloadUrl = String(asset);
                 if (mode === 'practice-challenges') {
-                    const cleanAsset = asset.replace('./', '');
-                    const folderPath = chal.repo_path || `${chal.category[0]}/${chal.name}`;
-                    downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${folderPath}/${cleanAsset}`;
+                    const cleanAsset = downloadUrl.replace('./', '').replace(/[^a-zA-Z0-9._\-\/]/g,'');
+                    const folderPath = chal.repo_path || `${Array.isArray(chal.category) ? chal.category[0] : chal.category}/${chal.name}`;
+                    const safeFolder = String(folderPath).replace(/[^a-zA-Z0-9._\-\/ ]/g,'');
+                    downloadUrl = `https://raw.githubusercontent.com/A-Y-U-S-H-Y-A/project-haxnation/main/${safeFolder}/${cleanAsset}`;
                 }
-                const safeDownloadUrl = DOMPurify.sanitize(downloadUrl);
-                return `<a href="${safeDownloadUrl}" target="_blank" class="font-mono text-xs uppercase tracking-widest font-bold bg-white text-ink border-2 border-ink px-4 py-2 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan transition-all duration-75">[↓] ACQUIRE_ASSET</a>`;
+                const safeDownloadUrl = safeHref(downloadUrl, '#');
+                return `<a href="${safeDownloadUrl}" target="_blank" rel="noopener noreferrer" class="font-mono text-xs uppercase tracking-widest font-bold bg-white text-ink border-2 border-ink px-4 py-2 shadow-[4px_4px_0_0_#0b0b0b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#0b0b0b] hover:bg-cyan transition-all duration-75">[↓] ACQUIRE_ASSET</a>`;
             }).join('');
         } else {
             assetsDiv.innerHTML = '';
@@ -989,11 +1177,13 @@ async function openChallenge(id, mode) {
 
         const hintsDiv = document.getElementById('det-hints');
         if (chal.hints && chal.hints.length > 0) {
-            hintsDiv.innerHTML = DOMPurify.sanitize(chal.hints.map((hint, index) => `
-                <div class="border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b] rounded-none overflow-hidden">
-                    <button class="w-full text-left px-4 py-3 bg-white hover:bg-ink hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-colors duration-0 border-b-2 border-transparent" onclick="window.toggleHint(${index})">> DECRYPT HINT ${index + 1}</button>
-                    <div class="hidden p-4 bg-canvas border-t-2 border-ink text-sm text-ink font-mono" id="hint-${index}">${hint}</div>
-                </div>`).join(''));
+            hintsDiv.innerHTML = chal.hints.map((hint, index) => {
+                const safeHint = DOMPurify.sanitize(String(hint));
+                return `<div class="border-2 border-ink bg-white shadow-[4px_4px_0_0_#0b0b0b] rounded-none overflow-hidden">
+                    <button data-hint-idx="${index}" class="hint-toggle w-full text-left px-4 py-3 bg-white hover:bg-ink hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-colors duration-0 border-b-2 border-transparent">> DECRYPT HINT ${index + 1}</button>
+                    <div class="hidden p-4 bg-canvas border-t-2 border-ink text-sm text-ink font-mono" id="hint-${index}">${safeHint}</div>
+                </div>`;
+            }).join('');
         } else {
             hintsDiv.innerHTML = '';
         }
@@ -1027,10 +1217,13 @@ async function showLeaderboard() {
     tbody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-ink font-mono font-bold animate-pulse">> FETCHING_RANKS...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE_URL}/events/${window.activeEventId}/leaderboard`, { credentials: 'include' });
-        const data = await res.json();
-
-        if (data.success && data.leaderboard.length > 0) {
+        const { res, data } = await fetchJson(`${API_BASE_URL}/events/${encodeURIComponent(window.activeEventId)}/leaderboard`, { credentials: 'include' });
+        if (res.status === 429) { tbody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-white bg-danger font-mono font-bold">> RATE LIMITED. RETRY AFTER ${DOMPurify.sanitize(res.headers.get('Retry-After')||'60')}S</td></tr>`; return; }
+        if (data.hidden) {
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-ink font-mono font-bold bg-warning border-2 border-ink">> ${DOMPurify.sanitize(data.message || 'Scoreboard is hidden.')}</td></tr>`;
+            return;
+        }
+        if (data.success && data.leaderboard && data.leaderboard.length > 0) {
             tbody.innerHTML = data.leaderboard.map((user, index) => {
                 const safeName = DOMPurify.sanitize(user.name || '');
                 const safePoints = DOMPurify.sanitize(String(user.points));

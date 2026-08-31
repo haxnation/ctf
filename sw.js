@@ -1,4 +1,4 @@
-const CACHE_NAME = 'haxnation-cache-v2';
+const CACHE_NAME = 'haxnation-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('fetch', event => {
@@ -19,11 +20,14 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (event.request.url.includes('/api/')) return;
+  // Do not cache requests with Authorization or sensitive headers
+  if (event.request.headers.has('Authorization') || event.request.headers.has('X-Auth-Token')) return;
   
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       const fetchPromise = fetch(event.request).then(networkResponse => {
-        if (networkResponse && networkResponse.status === 200) {
+        // Only cache successful, same-origin, basic responses (avoid opaque)
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
         }

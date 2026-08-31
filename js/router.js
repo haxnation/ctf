@@ -1,10 +1,19 @@
 export function createRouter(appHandlers) {
     const navigate = (url) => {
+        if (typeof url !== 'string' || url.length > 2048 || url.trim() === '') return;
+        if (url.includes('\\')) return;
+        // Block any absolute URL with protocol (://) and protocol-relative //evil
+        if (url.includes('://')) return;
+        if (url.startsWith('//')) return;
+        // Block colon in non-hash/non-slash context (javascript:, data:, etc.)
+        if (url.includes(':') && !url.startsWith('/') && !url.startsWith('#')) return;
         if (url.startsWith('/soc') || url.startsWith('/grc')) {
             window.location.href = url;
             return;
         }
         const hashUrl = url.startsWith('#') ? url : '#' + url;
+        if (hashUrl.length > 2048 || hashUrl.includes('\\') || hashUrl.includes('://')) return;
+        if (hashUrl.startsWith('#//')) return;
         if (window.location.hash === hashUrl) return;
         window.location.hash = hashUrl;
     };
